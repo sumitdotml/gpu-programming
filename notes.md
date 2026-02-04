@@ -180,9 +180,23 @@ delete[] x;                 // free all of them
 Threads are the smallest unit of execution on a GPU. CUDA organizes them in a hierarchy:
 
 ```
-Grid (my whole job)
+Grid
  └── Blocks
       └── Threads
+```
+
+Visual:
+
+```
+Grid (my whole job)
+┌─────────────────────────────────────────┐
+│  Block 0     Block 1     Block 2        │
+│ ┌───────┐   ┌───────┐   ┌───────┐       │
+│ │ t t t │   │ t t t │   │ t t t │       │
+│ │ t t t │   │ t t t │   │ t t t │       │
+│ └───────┘   └───────┘   └───────┘       │
+└─────────────────────────────────────────┘
+  (t = thread)
 ```
 
 When I launch a kernel with `add<<<numBlocks, threadsPerBlock>>>`:
@@ -198,9 +212,39 @@ For example:
 | `<<<1, 256>>>` | 1      | 256               | 256           |
 | `<<<4096, 256>>>` | 4096 | 256              | 1,048,576     |
 
+Visual comparison:
+
+```
+<<<1, 1>>>
+┌─────────┐
+│ Block 0 │
+│  ┌───┐  │
+│  │ t │  │   1 thread total
+│  └───┘  │
+└─────────┘
+
+<<<1, 256>>>
+┌─────────────────────────────────────┐
+│ Block 0                             │
+│ ┌───┬───┬───┬───┬─────────────┬───┐ │
+│ │ t │ t │ t │ t │ ... 252 ... │ t │ │   256 threads total
+│ └───┴───┴───┴───┴─────────────┴───┘ │
+└─────────────────────────────────────┘
+
+<<<4096, 256>>>
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ Block 0           Block 1           Block 2                      Block 4095   │
+│ ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐           ┌───┬───┬───┐ │
+│ │ t │...│...│ t │ │ t │...│...│ t │ │ t │...│...│ t │  ... 4093 │ t │...│ t │ │
+│ └───┴───┴───┴───┘ └───┴───┴───┴───┘ └───┴───┴───┴───┘           └───┴───┴───┘ │
+│    256 threads       256 threads       256 threads               256 threads  │
+└───────────────────────────────────────────────────────────────────────────────┘
+            4096 blocks × 256 threads = 1,048,576 threads total (1M)
+```
+
 With `<<<1, 256>>>`, I get 256 threads running simultaneously. Each thread gets a unique `threadIdx.x` (0 to 255), so they can each work on a different element.
 
-```cpp
+```cu
 int i = threadIdx.x;  // thread 0 gets i=0, thread 1 gets i=1, ... thread 255 gets i=255
 y[i] = x[i] + y[i];   // each thread handles one element
 ```
@@ -215,7 +259,7 @@ To process all 1M elements, I either need more threads (like `<<<4096, 256>>>`),
 
 The strided loop lets a small number of threads handle a large array. Instead of each thread doing one element, each thread loops through multiple elements.
 
-```cpp
+```cu
 __global__
 void add(int n, float *x, float *y)
 {
@@ -256,6 +300,7 @@ Thread 2:   [i=2] → [i=258] → [i=514] → [i=770] → ...
    ↓           ↓        ↓         ↓         ↓
  (all running simultaneously, each doing its own sequence)
 ```
+
 
 | Approach                              | Analogy                                                        |
 | ------------------------------------- | -------------------------------------------------------------- |
