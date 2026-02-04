@@ -7,6 +7,8 @@ Table of contents
 - [Pointers and the `*` symbol](#pointers-and-the--symbol)
 - [Regular variables vs pointers (`float p` vs `float *p`)](#regular-variables-vs-pointers-float-p-vs-float-p)
 - [delete vs `delete[]`](#delete-vs-delete)
+- [CUDA threads and blocks](#cuda-threads-and-blocks)
+- [Strided loop pattern](#strided-loop-pattern)
 
 #### `<<` bit shift operator <a name="<<-bit-shift-operator"></a>
 
@@ -170,5 +172,97 @@ delete p;                   // free it
 float *x = new float[N];    // allocate N floats
 delete[] x;                 // free all of them
 ```
+
+---
+
+#### CUDA threads and blocks <a name="cuda-threads-and-blocks"></a>
+
+Threads are the smallest unit of execution on a GPU. CUDA organizes them in a hierarchy:
+
+```
+Grid (my whole job)
+ └── Blocks
+      └── Threads
+```
+
+When I launch a kernel with `add<<<numBlocks, threadsPerBlock>>>`:
+
+- First number = how many blocks
+- Second number = how many threads per block
+
+For example:
+
+| Launch         | Blocks | Threads per block | Total threads |
+| -------------- | ------ | ----------------- | ------------- |
+| `<<<1, 1>>>`   | 1      | 1                 | 1             |
+| `<<<1, 256>>>` | 1      | 256               | 256           |
+| `<<<4096, 256>>>` | 4096 | 256              | 1,048,576     |
+
+With `<<<1, 256>>>`, I get 256 threads running simultaneously. Each thread gets a unique `threadIdx.x` (0 to 255), so they can each work on a different element.
+
+```cpp
+int i = threadIdx.x;  // thread 0 gets i=0, thread 1 gets i=1, ... thread 255 gets i=255
+y[i] = x[i] + y[i];   // each thread handles one element
+```
+
+But if I have 1M elements and only 256 threads, only elements 0-255 get processed. The rest are never touched.
+
+To process all 1M elements, I either need more threads (like `<<<4096, 256>>>`), or I can use a strided loop.
+
+---
+
+#### Strided loop pattern <a name="strided-loop-pattern"></a>
+
+The strided loop lets a small number of threads handle a large array. Instead of each thread doing one element, each thread loops through multiple elements.
+
+```cpp
+__global__
+void add(int n, float *x, float *y)
+{
+  int index = threadIdx.x;
+  int stride = blockDim.x;
+  for (int i = index; i < n; i += stride)
+      y[i] = x[i] + y[i];
+}
+```
+
+With `<<<1, 256>>>`:
+- `threadIdx.x` = 0 to 255 (each thread's ID)
+- `blockDim.x` = 256 (total threads per block)
+
+Each thread starts at its index and jumps by 256 each iteration:
+
+```
+Thread 0:   i = 0,   256,   512,   768, ...
+Thread 1:   i = 1,   257,   513,   769, ...
+Thread 2:   i = 2,   258,   514,   770, ...
+...
+Thread 255: i = 255, 511,   767,   1023, ...
+```
+
+So with 1M elements and 256 threads, each thread processes 4,096 elements.
+
+This combines parallelism and sequencing:
+
+- **Parallel:** All 256 threads run at the same time
+- **Sequential:** Each thread loops through its ~4,096 elements one by one
+
+```
+Time →
+
+Thread 0:   [i=0] → [i=256] → [i=512] → [i=768] → ...
+Thread 1:   [i=1] → [i=257] → [i=513] → [i=769] → ...
+Thread 2:   [i=2] → [i=258] → [i=514] → [i=770] → ...
+   ↓           ↓        ↓         ↓         ↓
+ (all running simultaneously, each doing its own sequence)
+```
+
+| Approach                              | Analogy                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `<<<1, 1>>>`                          | 1 worker doing all 1M tasks sequentially                       |
+| `<<<1, 256>>>` with strided loop      | 256 workers, each doing ~4K tasks sequentially, all at once    |
+| `<<<4096, 256>>>` with 1 element each | 1M workers, each doing 1 task                                  |
+
+More threads = more parallelism, but there's a limit to how many threads a GPU can run efficiently. The strided loop lets me balance parallelism with sequential work per thread.
 
 ---
