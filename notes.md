@@ -9,6 +9,7 @@ Table of contents
 - [delete vs `delete[]`](#delete-vs-delete)
 - [CUDA threads and blocks](#cuda-threads-and-blocks)
 - [Strided loop pattern](#strided-loop-pattern)
+- [Mental model for 1D grids/blocks](#mental-model-for-1d-grids-blocks)
 
 #### `<<` bit shift operator <a name="<<-bit-shift-operator"></a>
 
@@ -206,11 +207,11 @@ When I launch a kernel with `add<<<numBlocks, threadsPerBlock>>>`:
 
 For example:
 
-| Launch         | Blocks | Threads per block | Total threads |
-| -------------- | ------ | ----------------- | ------------- |
-| `<<<1, 1>>>`   | 1      | 1                 | 1             |
-| `<<<1, 256>>>` | 1      | 256               | 256           |
-| `<<<4096, 256>>>` | 4096 | 256              | 1,048,576     |
+| Launch            | Blocks | Threads per block | Total threads |
+| ----------------- | ------ | ----------------- | ------------- |
+| `<<<1, 1>>>`      | 1      | 1                 | 1             |
+| `<<<1, 256>>>`    | 1      | 256               | 256           |
+| `<<<4096, 256>>>` | 4096   | 256               | 1,048,576     |
 
 Visual comparison:
 
@@ -271,6 +272,7 @@ void add(int n, float *x, float *y)
 ```
 
 With `<<<1, 256>>>`:
+
 - `threadIdx.x` = 0 to 255 (each thread's ID)
 - `blockDim.x` = 256 (total threads per block)
 
@@ -301,13 +303,65 @@ Thread 2:   [i=2] → [i=258] → [i=514] → [i=770] → ...
  (all running simultaneously, each doing its own sequence)
 ```
 
-
-| Approach                              | Analogy                                                        |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `<<<1, 1>>>`                          | 1 worker doing all 1M tasks sequentially                       |
-| `<<<1, 256>>>` with strided loop      | 256 workers, each doing ~4K tasks sequentially, all at once    |
-| `<<<4096, 256>>>` with 1 element each | 1M workers, each doing 1 task                                  |
+| Approach                              | Analogy                                                     |
+| ------------------------------------- | ----------------------------------------------------------- |
+| `<<<1, 1>>>`                          | 1 worker doing all 1M tasks sequentially                    |
+| `<<<1, 256>>>` with strided loop      | 256 workers, each doing ~4K tasks sequentially, all at once |
+| `<<<4096, 256>>>` with 1 element each | 1M workers, each doing 1 task                               |
 
 More threads = more parallelism, but there's a limit to how many threads a GPU can run efficiently. The strided loop lets me balance parallelism with sequential work per thread.
+
+---
+
+#### Mental model for 1D grids/blocks <a name="mental-model-for-1d-grids-blocks"></a>
+
+A useful way to picture this in my head (for 1D):
+
+**A block is like a Python list of threads:**
+
+```python
+block = [t, t, t, t, ..., t]  # a list of threads
+len(block) = blockDim.x       # total threads in block
+block[i] = threadIdx.x = i    # each thread's index
+```
+
+**A grid is like a list of blocks (list of lists):**
+
+```python
+grid = [
+    [t, t, t, ..., t],   # block 0 → blockIdx.x = 0
+    [t, t, t, ..., t],   # block 1 → blockIdx.x = 1
+    [t, t, t, ..., t],   # block 2 → blockIdx.x = 2
+    ...
+]
+
+len(grid) = gridDim.x              # total blocks
+len(grid[0]) = blockDim.x          # threads per block
+grid[b][t] → blockIdx.x = b, threadIdx.x = t
+```
+
+So I have two indexes:
+
+| Index         | What it identifies             | Analogy                         |
+| ------------- | ------------------------------ | ------------------------------- |
+| `blockIdx.x`  | Which block in the grid        | `grid[blockIdx.x]`              |
+| `threadIdx.x` | Which thread within that block | `grid[blockIdx.x][threadIdx.x]` |
+
+**Global index (to access my data array):**
+
+When I need a single flat index to access my data, I combine them:
+
+```cu
+int global_index = blockIdx.x * blockDim.x + threadIdx.x;
+```
+
+Like flattening a 2D list into 1D. For a thread in Block 1 with `threadIdx.x = 3` and `blockDim.x = 256`:
+
+```
+blockIdx.x * blockDim.x = 1 * 256 = 256   ← "Block 1 starts at global index 256"
+              + threadIdx.x = + 3         ← "I'm the 4th thread in my block"
+                              -----
+                               259        ← "So my global index is 259"
+```
 
 ---
