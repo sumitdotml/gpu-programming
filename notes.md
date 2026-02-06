@@ -9,6 +9,7 @@ Table of contents
 - [delete vs `delete[]`](#delete-vs-delete)
 - [CUDA threads and blocks](#cuda-threads-and-blocks)
 - [Strided loop pattern](#strided-loop-pattern)
+- [Key insight: each thread has its own variables](#key-insight-each-thread-has-its-own-variables)
 - [Mental model for 1D grids/blocks](#mental-model-for-1d-grids-blocks)
 
 #### `<<` bit shift operator <a name="<<-bit-shift-operator"></a>
@@ -310,6 +311,75 @@ Thread 2:   [i=2] → [i=258] → [i=514] → [i=770] → ...
 | `<<<4096, 256>>>` with 1 element each | 1M workers, each doing 1 task                               |
 
 More threads = more parallelism, but there's a limit to how many threads a GPU can run efficiently. The strided loop lets me balance parallelism with sequential work per thread.
+
+---
+
+#### Key insight: each thread has its own variables <a name="key-insight-each-thread-has-its-own-variables"></a>
+
+A common point of confusion: in the strided loop, `threadIdx.x` is fixed but `i` grows.
+
+Assuming `<<<1, 256>>>` (1 block, 256 threads per block):
+
+```cu
+int index = threadIdx.x;  // Thread 0 gets index = 0 (fixed, never changes)
+int stride = blockDim.x;  // stride = 256
+for (int i = index; i < n; i += stride)
+//         ↑ starts at 0    ↑ becomes 256, then 512, then 768...
+```
+
+For Thread 0:
+
+```
+Loop iteration 1: i = 0
+Loop iteration 2: i = 0 + 256 = 256
+Loop iteration 3: i = 256 + 256 = 512
+Loop iteration 4: i = 512 + 256 = 768
+... until i >= N
+```
+
+`threadIdx.x` stays 0 forever. `i` grows. Each thread has its own private copy of `i` and they don't share it.
+
+**What parallelism looks like:**
+
+At any given moment, all 256 threads are working on different elements simultaneously:
+
+```
+Time 0 (all 256 threads in parallel):
+  Thread 0:   i = 0    → computes y[0] = x[0] + y[0]
+  Thread 1:   i = 1    → computes y[1] = x[1] + y[1]
+  ...
+  Thread 255: i = 255  → computes y[255] = x[255] + y[255]
+
+Time 1 (all threads do i += 256, run in parallel again):
+  Thread 0:   i = 256  → computes y[256]
+  Thread 1:   i = 257  → computes y[257]
+  ...
+  Thread 255: i = 511  → computes y[511]
+```
+
+So 256 threads = 256 parallel additions per loop iteration. With `<<<2, 256>>>`, I'd have 512 threads = 512 parallel additions.
+
+| What                            | Parallel or Sequential?       |
+| ------------------------------- | ----------------------------- |
+| Threads within a block          | Parallel                      |
+| Loop iterations within a thread | Sequential                    |
+| Multiple blocks                 | Parallel (GPU schedules them) |
+
+**Scaling with more blocks:**
+
+Each block's `threadIdx.x` resets to 0-255. With multiple blocks, I'll have to use the global index to avoid overlap:
+
+```cu
+int index = blockIdx.x * blockDim.x + threadIdx.x;  // global index
+int stride = blockDim.x * gridDim.x;                // total threads across ALL blocks (for striding globally)
+```
+
+| Block | threadIdx.x | Global index |
+| ----- | ----------- | ------------ |
+| 0     | 0-255       | 0-255        |
+| 1     | 0-255       | 256-511      |
+
+More blocks = more parallelism = faster (up to GPU limits).
 
 ---
 
