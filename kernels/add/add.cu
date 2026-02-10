@@ -4,6 +4,8 @@
 #include <math.h>
 
 __global__ void add(int n, float *x, float *y) {
+  int index = threadIdx.x;
+  int stride = blockDim.x * gridDim.x; // aka global index
   for (int i = 0; i < n; i++)
     y[i] = x[i] + y[i];
 }
@@ -23,7 +25,7 @@ int main(void) {
   }
 
   // Run kernel on 1M elements on the GPU
-  add<<<1, 1>>>(N, x, y);
+  add<<<1, 256>>>(N, x, y);
 
   // Wait for GPU to finish before accessing on host
   cudaDeviceSynchronize();
