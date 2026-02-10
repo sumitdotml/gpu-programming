@@ -11,6 +11,7 @@ Table of contents
 - [Strided loop pattern](#strided-loop-pattern)
 - [Key insight: each thread has its own variables](#key-insight-each-thread-has-its-own-variables)
 - [Mental model for 1D grids/blocks](#mental-model-for-1d-grids-blocks)
+- [Ceiling division trick for calculating number of blocks](#ceiling-division-trick-for-calculating-number-of-blocks)
 
 #### `<<` bit shift operator <a name="<<-bit-shift-operator"></a>
 
@@ -433,5 +434,38 @@ blockIdx.x * blockDim.x = 1 * 256 = 256   ← "Block 1 starts at global index 25
                               -----
                                259        ← "So my global index is 259"
 ```
+
+---
+
+#### Ceiling division trick for calculating number of blocks <a name="ceiling-division-trick-for-calculating-number-of-blocks"></a>
+
+To launch enough blocks to cover all N elements:
+
+```cu
+int blockSize = 256;
+int numBlocks = (N + blockSize - 1) / blockSize;
+add<<<numBlocks, blockSize>>>(N, x, y);
+```
+
+My first instinct was to just do `N / blockSize`, but in C/C++ integer division rounds down (truncates). This means some elements could be left unprocessed:
+
+```
+N = 1000, blockSize = 256
+
+Plain division:    1000 / 256 = 3    → 3 × 256 = 768 threads (missing 232 elements!)
+Ceiling division: (1000 + 255) / 256 = 4 → 4 × 256 = 1024 threads (all covered ✓)
+```
+
+The extra threads (1024 - 1000 = 24) are "wasted" but harmless — the kernel's bounds check (`if (i < n)`) prevents them from accessing out-of-bounds memory.
+
+When N is perfectly divisible, it still works:
+
+```
+N = 512, blockSize = 256
+
+(512 + 255) / 256 = 767 / 256 = 2  → exactly 2 blocks, no waste ✓
+```
+
+This `(a + b - 1) / b` pattern is a general C/C++ trick for ceiling division with integers. Claude tells me that it shows up everywhere in systems programming and not just CUDA; learned something new today.
 
 ---
