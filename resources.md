@@ -4,6 +4,35 @@ A structured path from CUDA basics to Flash Attention 4. Organized roughly in th
 
 ---
 
+## 0. C/C++ for CUDA
+
+CUDA is C++ -- `nvcc` is a C++ compiler with GPU extensions. I don't need all of C++, but I need more than just C. The memory model and pointer discipline come from C; the syntax and patterns I'll actually write come from C++.
+
+What I need to cover:
+
+- Pointers and pointer arithmetic (every kernel takes raw pointers)
+- `malloc`/`free` and manual memory management (maps directly to `cudaMalloc`/`cudaFree`)
+- Arrays as pointers, structs, basic type casting
+- C++ additions that show up in CUDA code: `auto`, references, structs with methods, basic templates (reading them, not writing complex ones)
+- Compiling from the command line with `g++` / `nvcc`
+
+Resources:
+
+- [Beej's Guide to C Programming](https://beej.us/guide/bgc/) -- for pointer fundamentals: pointers (ch. 10), memory allocation (ch. 12), and structs (ch. 7)
+- [learncpp.com](https://www.learncpp.com/) -- for the C++ bits: references, `auto`, structs with member functions, templates basics
+- [CS50 C lectures](https://cs50.harvard.edu/x/) -- if I want video walkthroughs, weeks 1-5 cover the C foundations
+
+Exercises to do:
+
+1. Allocate a float array with `malloc`, fill it with values, compute the sum, `free` it
+2. Redo exercise 1 using `new`/`delete` instead of `malloc`/`free`
+3. Write a function that takes a pointer to an array and its length, modifies elements in place. Then write a version using references.
+4. Port exercise 1 to CUDA: replace `malloc` with `cudaMallocManaged`, write a kernel that fills the array
+
+> Note: The goal is fluency with pointers, manual memory, and reading C++ syntax -- not mastering the language. Once exercise 4 feels natural, move on.
+
+---
+
 ## 1. CUDA Fundamentals
 
 Where I need to go next: memory hierarchy (global, shared, registers, L1/L2), coalesced access patterns, `__syncthreads()`, and profiling with `ncu`.
@@ -105,6 +134,7 @@ FA3 introduced pipelining and warp specialization on Hopper. FA4 -- written in C
 
 | Step | Topic | Exercise |
 | ---- | ----- | -------- |
+| 0 | C/C++ for CUDA | Pointers, manual memory, port to cudaMallocManaged |
 | 1 | Shared memory, profiling | Tiled matrix transpose |
 | 2 | Reductions | Parallel sum with warp shuffles |
 | 3 | Matrix multiplication | Naive → tiled → register-tiled matmul |
