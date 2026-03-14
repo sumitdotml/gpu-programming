@@ -6,7 +6,7 @@ A structured path from CUDA basics to Flash Attention 4. Organized roughly in th
 
 ## 0. C/C++ for CUDA
 
-CUDA is C++ -- `nvcc` is a C++ compiler with GPU extensions. I don't need all of C++, but I need more than just C. The memory model and pointer discipline come from C; the syntax and patterns I'll actually write come from C++.
+CUDA is C++-- `nvcc` is a C++ compiler with GPU extensions. I don't need all of C++, but I need more than just C. The memory model and pointer discipline come from C; the syntax and patterns I'll actually write come from C++.
 
 What I need to cover:
 
@@ -18,7 +18,7 @@ What I need to cover:
 
 Resources:
 
-- [Beej's Guide to C Programming](https://beej.us/guide/bgc/) -- for pointer fundamentals: pointers (ch. 10), memory allocation (ch. 12), and structs (ch. 7)
+- [Beej's Guide to C Programming](https://beej.us/guide/bgc/) -- for pointer fundamentals: pointers (ch. 5, 11, 23), structs (ch. 8, 20), and memory allocation (ch. 12)
 - [learncpp.com](https://www.learncpp.com/) -- for the C++ bits: references, `auto`, structs with member functions, templates basics
 - [CS50 C lectures](https://cs50.harvard.edu/x/) -- if I want video walkthroughs, weeks 1-5 cover the C foundations
 
@@ -56,7 +56,7 @@ MatMul is the canonical GPU optimization exercise. Going from a naive implementa
 
 - [Simon Boehm: "How to Optimize a CUDA Matmul Kernel"](https://siboehm.com/articles/22/CUDA-MMM) -- step-by-step from naive to near-cuBLAS, probably the single most useful tutorial for this stage
 - [GPU MODE Lecture 6](https://github.com/gpu-mode/lectures) -- CUDA matmul
-- [Lezcano: "CUDA beyond the basics"](https://lezcano.github.io/2024/09/21/cuda-matrix.html) -- good companion to Boehm's post
+- ~~Lezcano: "CUDA beyond the basics"~~ -- site taken down (lezcano.github.io no longer exists, no archived copy available)
 
 ---
 
@@ -101,7 +101,7 @@ Resources for CuTe-DSL:
 
 - [NVIDIA CuTe DSL Overview & Quick Start](https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/overview.html) -- official docs, designed for newcomers
 - [Chris Choy: "CuTe DSL Basics"](https://chrischoy.org/posts/cutedsl-basics/) -- starts from a first kernel, self-contained
-- [Simon Veitner: "Bridging Math and Code: CuTe Layout Algebra"](https://veitner.bearblog.dev/) -- learn layout algebra first
+- [Simon Veitner: "Bridging Math and Code: CuTe Layout Algebra in CuTeDSL"](https://veitner.bearblog.dev/bridging-math-and-code-cute-layout-algebra-in-cutedsl/) -- learn layout algebra first
 - [Simon Veitner: "An applied introduction to CuTeDSL"](https://veitner.bearblog.dev/an-applied-introduction-to-cutedsl/) -- assumes layout algebra, shows naive → vectorized → TV layout kernel with bandwidth numbers
 - [Ian Barber: "CuTe-DSL"](https://ianbarber.blog/2025/07/04/cute-dsl/) -- practical perspective, compares to Triton
 - [CUTLASS repo examples](https://github.com/NVIDIA/cutlass) -- `examples/python/CuTeDSL/` has GEMM and FMHA implementations
@@ -132,18 +132,21 @@ FA3 introduced pipelining and warp specialization on Hopper. FA4 -- written in C
 
 ## Study Plan
 
-| Step | Topic | Exercise |
-| ---- | ----- | -------- |
-| 0 | C/C++ for CUDA | Pointers, manual memory, port to cudaMallocManaged |
-| 1 | Shared memory, profiling | Tiled matrix transpose |
-| 2 | Reductions | Parallel sum with warp shuffles |
-| 3 | Matrix multiplication | Naive → tiled → register-tiled matmul |
-| 4 | Online softmax | Single-pass softmax kernel |
-| 5 | Flash Attention 1/2 | Read paper + implement simplified version |
-| 6 | CuTe layout algebra | Work through Veitner's layout algebra post |
-| 7 | CuTe-DSL kernels | Transpose → GEMM in CuTe-DSL |
-| 8 | FA3/FA4 | Study the codebase with Modal's guide |
+
+| Step | Topic                    | Exercise                                           |
+| ---- | ------------------------ | -------------------------------------------------- |
+| 0    | C/C++ for CUDA           | Pointers, manual memory, port to cudaMallocManaged |
+| 1    | Shared memory, profiling | Tiled matrix transpose                             |
+| 2    | Reductions               | Parallel sum with warp shuffles                    |
+| 3    | Matrix multiplication    | Naive → tiled → register-tiled matmul              |
+| 4    | Online softmax           | Single-pass softmax kernel                         |
+| 5    | Flash Attention 1/2      | Read paper + implement simplified version          |
+| 6    | CuTe layout algebra      | Work through Veitner's layout algebra post         |
+| 7    | CuTe-DSL kernels         | Transpose → GEMM in CuTe-DSL                       |
+| 8    | FA3/FA4                  | Study the codebase with Modal's guide              |
+
 
 > Note: I don't need a Blackwell GPU for most of this. FA1/FA2 concepts apply on any CUDA-capable GPU. Even studying FA4's design decisions teaches GPU thinking regardless of the hardware I'm running on.
 
-> Note: CUTLASS C++ templates are not a prerequisite. CuTe-DSL was designed to replace that path. The concepts (layout algebra, tiling, TV layouts) are the same -- the language is Python, not C++.
+> Note: CUTLASS C++templates are not a prerequisite. CuTe-DSL was designed to replace that path. The concepts (layout algebra, tiling, TV layouts) are the same -- the language is Python, not C++.
+
