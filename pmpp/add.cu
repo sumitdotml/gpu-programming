@@ -1,4 +1,6 @@
-void vecAdd(float *A_h, float *B_h, float *C_h, int n) {
+#include <stdio.h>
+
+int vecAdd(float *A_h, float *B_h, float *C_h, int n) {
   int size = n * sizeof(float);
   float *A_d, *B_d, *C_d;
   // Part 1: Allocate device memory for A, B, and C
@@ -21,4 +23,12 @@ void vecAdd(float *A_h, float *B_h, float *C_h, int n) {
   cudaFree(A_d);
   cudaFree(B_d);
   cudaFree(C_d);
+}
+
+__global__
+void vecAddKernel(float *A, float *B, float *C, int n) {
+  int global_i = blockDim.x * blockIdx.x + threadIdx.x;
+  if (global_i < n) {
+    C[global_i] = A[global_i] + B[global_i];
+  }
 }
