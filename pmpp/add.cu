@@ -1,4 +1,7 @@
+#include <cmath>
 #include <stdio.h>
+
+void vecAddKernel(float *A, float *B, float *C, int n);
 
 int vecAdd(float *A_h, float *B_h, float *C_h, int n) {
   int size = n * sizeof(float);
@@ -15,6 +18,7 @@ int vecAdd(float *A_h, float *B_h, float *C_h, int n) {
 
   // Part 2: Call kernel – to launch a grid of threads
   // to perform the actual vector addition
+  vecAddKernel<<<ceil(n / 256.0), 256>>>(A_d, B_d, C_d, n);
 
   // Part 3: Copy C from the device memory
   cudaMemcpy(C_h, C_d, size, cudaMemcpyDeviceToHost);
@@ -25,8 +29,7 @@ int vecAdd(float *A_h, float *B_h, float *C_h, int n) {
   cudaFree(C_d);
 }
 
-__global__
-void vecAddKernel(float *A, float *B, float *C, int n) {
+__global__ void vecAddKernel(float *A, float *B, float *C, int n) {
   int global_i = blockDim.x * blockIdx.x + threadIdx.x;
   if (global_i < n) {
     C[global_i] = A[global_i] + B[global_i];
