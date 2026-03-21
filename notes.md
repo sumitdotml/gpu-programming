@@ -12,6 +12,9 @@ Table of contents
 - [Key insight: each thread has its own variables](#key-insight-each-thread-has-its-own-variables)
 - [Mental model for 1D grids/blocks](#mental-model-for-1d-grids-blocks)
 - [Ceiling division trick for calculating number of blocks](#ceiling-division-trick-for-calculating-number-of-blocks)
+- [Profiling with `nsys` (Nsight Systems)](#profiling-with-nsys-nsight-systems)
+- [Profiling with `ncu` (Nsight Compute)](#profiling-with-ncu-nsight-compute)
+- [Memory-bound vs compute-bound kernels](#memory-bound-vs-compute-bound-kernels)
 
 #### `<<` bit shift operator <a name="<<-bit-shift-operator"></a>
 
@@ -456,7 +459,7 @@ Plain division:    1000 / 256 = 3    → 3 × 256 = 768 threads (missing 232 ele
 Ceiling division: (1000 + 255) / 256 = 4 → 4 × 256 = 1024 threads (all covered ✓)
 ```
 
-The extra threads (1024 - 1000 = 24) are "wasted" but harmless — the kernel's bounds check (`if (i < n)`) prevents them from accessing out-of-bounds memory.
+The extra threads (1024 - 1000 = 24) are "wasted" but harmless because the kernel's bounds check (`if (i < n)`) prevents them from accessing out-of-bounds memory.
 
 When N is perfectly divisible, it still works:
 
@@ -467,5 +470,150 @@ N = 512, blockSize = 256
 ```
 
 This `(a + b - 1) / b` pattern is a general C/C++ trick for ceiling division with integers. Claude tells me that it shows up everywhere in systems programming and not just CUDA; learned something new today.
+
+---
+
+#### Profiling with `nsys` (Nsight Systems) <a name="profiling-with-nsys-nsight-systems"></a>
+
+NVIDIA provides two profiling tools. `nsys` is the first one I should reach for. It gives a high-level view of where time is spent across the whole program.
+
+To install in Google Colab:
+
+```bash
+!apt-get install -y nsight-systems-2025.5.2
+```
+
+To run:
+
+```bash
+!nsys profile --stats=true --force-overwrite=true ./my_binary
+```
+
+`--stats=true` prints a summary to stdout. `--force-overwrite=true` avoids conflicts when re-running (it creates a `.nsys-rep` file).
+
+The output has several sections. The ones I care about for CUDA:
+
+| Section | What it shows |
+| --- | --- |
+| `cuda_api_sum` | Time spent in CUDA API calls on the CPU side (`cudaMalloc`, `cudaMemcpy`, etc.) |
+| `cuda_gpu_kern_sum` | Actual kernel execution time on the GPU |
+| `cuda_gpu_mem_time_sum` | Time spent on host-to-device and device-to-host memory transfers |
+| `cuda_gpu_mem_size_sum` | Bytes transferred in each direction |
+
+Example from my vector add kernel (1M elements, Tesla T4):
+
+```
+[5/8] cuda_api_sum
+  cudaMalloc:       192ms  (97.0%)   ← includes one-time CUDA context init
+  cudaMemcpy:       5.2ms  (2.6%)
+  cudaFree:         0.5ms  (0.3%)
+  cudaLaunchKernel: 0.2ms  (0.1%)
+
+[6/8] cuda_gpu_kern_sum
+  vecAddKernel:     47.8μs          ← actual GPU compute time
+
+[7/8] cuda_gpu_mem_time_sum
+  Host-to-Device:   1.68ms (2 copies: A and B)
+  Device-to-Host:   1.63ms (1 copy: C)
+```
+
+The first `cudaMalloc` call looks enormous at 192ms because it includes CUDA context initialization such as loading the driver, setting up memory management, JIT-compiling the kernel. Subsequent `cudaMalloc` calls were ~80μs each. In a real application, this one-time cost gets amortized across many kernel launches.
+
+> Note: `nsys` also generates `.nsys-rep` and `.sqlite` files that can be opened in the Nsight Systems GUI for a visual timeline. Useful when dealing with multiple kernels or CUDA streams.
+
+---
+
+#### Profiling with `ncu` (Nsight Compute) <a name="profiling-with-ncu-nsight-compute"></a>
+
+`ncu` is the second profiling tool. While `nsys` shows where time goes at the program level, `ncu` profiles individual kernel launches at the hardware level. It replays the kernel multiple times to collect different hardware counter sets, so it's slower than `nsys`.
+
+To run:
+
+```bash
+!ncu ./my_binary
+!ncu --set full ./my_binary          # for the complete set of metrics
+!ncu --kernel-name myKernel ./my_binary  # target a specific kernel
+```
+
+The output has three main sections:
+
+1. GPU Speed Of Light Throughput
+
+Shows how close I am to the GPU's theoretical limits:
+
+```
+Memory Throughput:       89.02%
+Compute (SM) Throughput: 24.23%
+Duration:                50.05μs
+```
+
+Memory throughput at 89% means I'm using almost all the available memory bandwidth. Compute at 24% means the SMs are mostly idle, waiting for data. This tells me the kernel is memory-bound (see next section).
+
+2. Launch Statistics
+
+Shows the kernel's grid configuration and resource usage:
+
+```
+Grid Size:           4,096
+Block Size:          256
+Registers Per Thread: 16
+Threads:             1,048,576
+Waves Per SM:        25.60
+```
+
+"Waves Per SM" is how many rounds of blocks each SM processes: 4096 blocks ÷ 40 SMs ÷ 4 concurrent blocks = ~25.6 waves.
+
+3. Occupancy
+
+How well I'm filling the GPU's available thread slots:
+
+```
+Theoretical Occupancy:  100%
+Achieved Occupancy:     88.29%
+```
+
+Theoretical is 100% because my kernel uses only 16 registers per thread and no shared memory, so there's nothing limiting how many warps the GPU can schedule. The gap to 88% achieved is mostly due to tail effects: 4096 blocks don't divide perfectly across 40 SMs, so some SMs finish their last wave before others.
+
+> Note: In Colab, if `ncu` gives a permission error, try adding `--target-processes all`.
+
+---
+
+#### Memory-bound vs compute-bound kernels <a name="memory-bound-vs-compute-bound-kernels"></a>
+
+This is probably the most useful concept from profiling. Every kernel falls somewhere on a spectrum:
+
+| | Memory-bound | Compute-bound |
+| --- | --- | --- |
+| Bottleneck | Waiting for data from DRAM | ALUs are fully busy |
+| `ncu` signal | High memory throughput, low compute throughput | Low memory throughput, high compute throughput |
+| Optimization | Reduce data movement, improve access patterns | Use faster math, reduce instruction count |
+
+The way to reason about this is through arithmetic intensity, which is how many FLOPs I do per byte of data I move.
+
+For my vector add kernel:
+
+```
+Per element:
+  Read A[i]:  4 bytes
+  Read B[i]:  4 bytes
+  Write C[i]: 4 bytes
+  Total:      12 bytes moved
+
+  Compute:    1 addition (1 FLOP)
+
+Arithmetic intensity = 1 FLOP / 12 bytes ≈ 0.08 FLOPs/byte
+```
+
+The Tesla T4 has ~320 GB/s memory bandwidth and ~8.1 TFLOPS of FP32 compute. To balance both:
+
+```
+8.1 TFLOPS / 320 GB/s ≈ 25 FLOPs/byte needed to be compute-bound
+```
+
+My vector add does 0.08 FLOPs/byte, nowhere close to 25. The GPU finishes the math almost instantly and spends most of its time waiting for data. This is expected; element-wise operations will always be memory-bound.
+
+Matrix multiplication, on the other hand, does O(n³) compute on O(n²) data, giving much higher arithmetic intensity. That's why GPUs are so good at it: they can actually use their compute hardware.
+
+> Note: This "FLOPs/byte" framing comes from the roofline model, which plots kernel performance against arithmetic intensity. It's a useful way to visualize whether a kernel has room to improve or is already hitting a hardware ceiling.
 
 ---
