@@ -29,7 +29,7 @@ int main() {
   cudaMemcpy(B_d, B_h, size, cudaMemcpyHostToDevice);
 
   // calling the kernel to launch a grid of threads to perform vector addition
-  vecAddKernel<<<ceil(n / 256.0), 256>>>(A_d, B_d, C_d, n);
+  vecAddKernel<<<(n + 255) / 256, 256>>>(A_d, B_d, C_d, n);
 
   // copying c from the device memory
   cudaMemcpy(C_h, C_d, size, cudaMemcpyDeviceToHost);
