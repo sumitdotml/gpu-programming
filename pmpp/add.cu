@@ -28,8 +28,11 @@ int main() {
   cudaMemcpy(A_d, A_h, size, cudaMemcpyHostToDevice);
   cudaMemcpy(B_d, B_h, size, cudaMemcpyHostToDevice);
 
+  dim3 dimGrid((n + 255) / 256, 1, 1);
+  dim3 dimBlock(256, 1, 1);
+
   // calling the kernel to launch a grid of threads to perform vector addition
-  vecAddKernel<<<(n + 255) / 256, 256>>>(A_d, B_d, C_d, n);
+  vecAddKernel<<<dimGrid, dimBlock>>>(A_d, B_d, C_d, n);
 
   // copying c from the device memory
   cudaMemcpy(C_h, C_d, size, cudaMemcpyDeviceToHost);
