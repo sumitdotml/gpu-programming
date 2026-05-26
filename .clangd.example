@@ -1,0 +1,27 @@
+# Reference for what `.clangd` should contain on each machine.
+# When switching machines: copy the matching block below into `.clangd`,
+# work locally, and keep the edit OUT of commits (e.g. `git stash` it).
+
+########################################################
+# Linux box (NVIDIA H200, compute capability 9.0)
+########################################################
+CompileFlags:
+  Add: [--cuda-host-only, --cuda-path=/usr/local/cuda, --cuda-gpu-arch=sm_90]
+
+########################################################
+# macOS (CUDA cannot run here — editor-only setup)
+########################################################
+# macOS has no CUDA driver, so .cu files never actually execute on this machine.
+# But I still want clangd to parse them without flagging every CUDA symbol as
+# undefined. So my fix is to install the CUDA toolkit *headers* locally
+# (setup script: https://github.com/sumitdotml/dotfiles/blob/main/scripts/setup-cuda-headers.sh).
+# This is enough for the LSP to resolve `__global__`, `cudaMalloc`, `dim3`, etc.
+# `sm_75` is arbitrary here. Nothing is being compiled for execution, the arch
+# just picks a consistent set of #ifdef branches inside the CUDA headers.
+CompileFlags:
+  Add: [--cuda-host-only, --cuda-path=/Users/sumit/.local/cuda, --cuda-gpu-arch=sm_75]
+
+# Flag reference:
+#   --cuda-host-only      : skip device-side parsing (universal; keep on every machine)
+#   --cuda-path=<dir>     : where the CUDA toolkit lives on this machine
+#   --cuda-gpu-arch=sm_XX : compute capability (Hopper=sm_90, Ampere=sm_86, Turing=sm_75)
