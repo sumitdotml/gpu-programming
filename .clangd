@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [--cuda-host-only, --cuda-path=/Users/sumit/.local/cuda, --cuda-gpu-arch=sm_75]
+  Add: [--cuda-host-only, --cuda-path=/usr/local/cuda, --cuda-gpu-arch=sm_90]
