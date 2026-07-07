@@ -50,17 +50,17 @@ Use this exact shape for new entries.
 
 ## Entries
 
-### MISTAKE-YYYYMMDD-001
-- id:
+### MISTAKE-20260707-001
+- id: MISTAKE-20260707-001
 - status: active
-- severity:
-- scope_tags: []
-- pattern:
-- prevention_rule:
-- validation_check:
-- first_seen:
-- last_seen:
-- occurrence_count:
+- severity: medium
+- scope_tags: [docs, planning]
+- pattern: public agent guidance included machine-local adjacent repository paths
+- prevention_rule: keep local paths and private repo context in ignored CONTEXT.md or tutor_harness.md, and have AGENTS.md only point to those local files
+- validation_check: `git status --ignored --short` shows CONTEXT.md and tutor_harness.md ignored, and `AGENTS.md` does not contain literal adjacent repo paths
+- first_seen: 2026-07-07
+- last_seen: 2026-07-07
+- occurrence_count: 1
 - evidence:
-  - file:
-  - commit:
+  - file:AGENTS.md:12
+  - file:.gitignore:1
