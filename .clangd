@@ -1,2 +1,0 @@
-CompileFlags:
-  Add: [--cuda-host-only, --cuda-path=/usr/local/cuda, --cuda-gpu-arch=sm_90]
