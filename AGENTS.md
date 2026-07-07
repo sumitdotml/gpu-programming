@@ -9,6 +9,8 @@
 
 This repo is for learning CUDA and GPU programming. PMPP is the current foundation, but the main objective is to become comfortable writing, debugging, timing, and explaining CUDA kernels.
 
+`kernel_practice_resources.md` records the external CUDA/GPU-kernel practice resources found for this learning track, including the current PMPP chapter 3 practice context and the recommended progression from puzzles to ML kernels.
+
 Local context can live in `CONTEXT.md` when present. That file is intentionally ignored because it may mention machine-local paths, adjacent repos, tmux/session details, or private learning state.
 
 The detailed local tutor contract can live in `tutor_harness.md` when present. That file is also intentionally ignored.
