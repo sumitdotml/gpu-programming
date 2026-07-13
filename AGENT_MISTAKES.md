@@ -64,3 +64,17 @@ Use this exact shape for new entries.
 - evidence:
   - file:AGENTS.md:12
   - file:.gitignore:1
+
+### MISTAKE-20260713-001
+- id: MISTAKE-20260713-001
+- status: active
+- severity: medium
+- scope_tags: [learning, tutoring]
+- pattern: exercise hint substituted all coordinate values and reduced the remaining work to arithmetic
+- prevention_rule: stop after the conceptual or layout hint and ask the learner to construct the indexed expression unless they explicitly request a stronger hint
+- validation_check: before sending an exercise hint, verify that the response does not contain the complete substituted expression or leave only mechanical arithmetic
+- first_seen: 2026-07-13
+- last_seen: 2026-07-13
+- occurrence_count: 1
+- evidence:
+  - file:tutor_harness.md:69
