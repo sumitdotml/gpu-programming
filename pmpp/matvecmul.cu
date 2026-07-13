@@ -1,5 +1,13 @@
+#include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+static void checkCuda(cudaError_t result, const char *operation) {
+  if (result != cudaSuccess) {
+    fprintf(stderr, "%s failed: %s\n", operation, cudaGetErrorString(result));
+    exit(EXIT_FAILURE);
+  }
+}
 
 __global__ void matrixVectorMultiplyKernel(float *input_matrix, float *input_vector, float *output_vector, size_t dimension);
 void matrixVectorMultiply(float *output_vector_h, float *input_matrix_h, float *input_vector_h, size_t dimension);
@@ -52,20 +60,22 @@ __global__ void matrixVectorMultiplyKernel(float *input_matrix, float *input_vec
 
 void matrixVectorMultiply(float *output_vector_h, float *input_matrix_h, float *input_vector_h, size_t dimension) {
   float *input_matrix_d, *input_vector_d, *output_vector_d;
-  cudaMalloc((void **)&input_matrix_d, dimension * dimension * sizeof(float));
-  cudaMalloc((void **)&input_vector_d, dimension * sizeof(float));
-  cudaMalloc((void **)&output_vector_d, dimension * sizeof(float));
-  cudaMemcpy(input_matrix_d, input_matrix_h, dimension * dimension * sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(input_vector_d, input_vector_h, dimension * sizeof(float), cudaMemcpyHostToDevice);
+  checkCuda(cudaMalloc((void **)&input_matrix_d, dimension * dimension * sizeof(float)), "allocating the input matrix");
+  checkCuda(cudaMalloc((void **)&input_vector_d, dimension * sizeof(float)), "allocating the input vector");
+  checkCuda(cudaMalloc((void **)&output_vector_d, dimension * sizeof(float)), "allocating the output vector");
+  checkCuda(cudaMemcpy(input_matrix_d, input_matrix_h, dimension * dimension * sizeof(float), cudaMemcpyHostToDevice),
+            "copying the input matrix to the device");
+  checkCuda(cudaMemcpy(input_vector_d, input_vector_h, dimension * sizeof(float), cudaMemcpyHostToDevice), "copying the input vector to the device");
 
   dim3 dimGrid((dimension + 3) / 4, 1, 1);
   dim3 dimBlock(4, 1, 1);
 
   matrixVectorMultiplyKernel<<<dimGrid, dimBlock>>>(input_matrix_d, input_vector_d, output_vector_d, dimension);
+  checkCuda(cudaGetLastError(), "launching matrixVectorMultiplyKernel");
 
-  cudaMemcpy(output_vector_h, output_vector_d, dimension * sizeof(float), cudaMemcpyDeviceToHost);
+  checkCuda(cudaMemcpy(output_vector_h, output_vector_d, dimension * sizeof(float), cudaMemcpyDeviceToHost), "copying the output vector to the host");
 
-  cudaFree(input_matrix_d);
-  cudaFree(input_vector_d);
-  cudaFree(output_vector_d);
+  checkCuda(cudaFree(input_matrix_d), "freeing the input matrix");
+  checkCuda(cudaFree(input_vector_d), "freeing the input vector");
+  checkCuda(cudaFree(output_vector_d), "freeing the output vector");
 }
