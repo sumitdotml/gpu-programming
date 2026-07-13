@@ -9,19 +9,24 @@ CompileFlags:
   Add: [--cuda-host-only, --cuda-path=/usr/local/cuda, --cuda-gpu-arch=sm_90]
 
 ########################################################
-# macOS (CUDA cannot run here — editor-only setup)
+# macOS: CUDA cannot run here; this is an editor-only setup
 ########################################################
-# macOS has no CUDA driver, so .cu files never actually execute on this machine.
-# But I still want clangd to parse them without flagging every CUDA symbol as
-# undefined. So my fix is to install the CUDA toolkit *headers* locally
-# (setup script: https://github.com/sumitdotml/dotfiles/blob/main/scripts/setup-cuda-headers.sh).
-# This is enough for the LSP to resolve `__global__`, `cudaMalloc`, `dim3`, etc.
-# `sm_75` is arbitrary here. Nothing is being compiled for execution, the arch
-# just picks a consistent set of #ifdef branches inside the CUDA headers.
+# installing CUDA 12.8 headers locally lets clangd resolve CUDA syntax and symbols
+# even though this machine cannot compile or run the program
+# setup script: https://github.com/sumitdotml/dotfiles/blob/main/scripts/setup-cuda-headers.sh
+# sm_75 is arbitrary here; it selects consistent header branches for the parser
 CompileFlags:
-  Add: [--cuda-host-only, --cuda-path=/Users/sumit/.local/cuda, --cuda-gpu-arch=sm_75]
+  Add:
+    [
+      --cuda-host-only,
+      --cuda-path=/Users/sumit/.local/cuda,
+      --cuda-gpu-arch=sm_75,
+      -Xclang,
+      -target-sdk-version=12.8,
+    ]
 
-# Flag reference:
-#   --cuda-host-only      : skip device-side parsing (universal; keep on every machine)
+# flag reference:
+#   --cuda-host-only      : request only the host compilation for editor analysis
 #   --cuda-path=<dir>     : where the CUDA toolkit lives on this machine
 #   --cuda-gpu-arch=sm_XX : compute capability (Hopper=sm_90, Ampere=sm_86, Turing=sm_75)
+#   -Xclang -target-sdk-version=12.8 : keep macOS's SDK version from overriding CUDA's
