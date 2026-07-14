@@ -1,0 +1,2299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>CPU vs CUDA Row Loop</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:1180px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="CPU vs CUDA Row Loop" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;CPU vs CUDA Row Loop&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;cpu-cuda-row-lab&quot;&gt;
+  &lt;style&gt;
+    #cpu-cuda-row-lab {
+      --cpu: var(--viz-series-2);
+      --cuda: var(--viz-series-1);
+      --done: var(--viz-series-3);
+      --surface: color-mix(in oklab, var(--foreground) 4%, transparent);
+      --surface-strong: color-mix(in oklab, var(--foreground) 8%, transparent);
+      --cpu-soft: color-mix(in oklab, var(--cpu) 16%, transparent);
+      --cuda-soft: color-mix(in oklab, var(--cuda) 16%, transparent);
+      --done-soft: color-mix(in oklab, var(--done) 16%, transparent);
+      color: var(--foreground);
+      width: 100%;
+    }
+
+    #cpu-cuda-row-lab * {
+      box-sizing: border-box;
+      letter-spacing: 0;
+    }
+
+    #cpu-cuda-row-lab button {
+      font: inherit;
+    }
+
+    #cpu-cuda-row-lab .lab-shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    #cpu-cuda-row-lab .lab-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #cpu-cuda-row-lab .eyebrow {
+      margin: 0 0 6px;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    #cpu-cuda-row-lab h1 {
+      margin: 0;
+      font-family: Georgia, &quot;Times New Roman&quot;, serif;
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 400;
+      line-height: 1.08;
+    }
+
+    #cpu-cuda-row-lab .round-readout {
+      flex: 0 0 auto;
+      min-width: 176px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--foreground);
+      background: var(--surface);
+    }
+
+    #cpu-cuda-row-lab .round-readout span,
+    #cpu-cuda-row-lab .lane-counter,
+    #cpu-cuda-row-lab .micro-label {
+      display: block;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    #cpu-cuda-row-lab .round-readout strong {
+      display: block;
+      margin-top: 2px;
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #cpu-cuda-row-lab .control-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    #cpu-cuda-row-lab .control-btn {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+      cursor: pointer;
+      transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+    }
+
+    #cpu-cuda-row-lab .control-btn:hover:not(:disabled) {
+      border-color: color-mix(in oklab, var(--foreground) 25%, transparent);
+      background: var(--accent);
+    }
+
+    #cpu-cuda-row-lab .control-btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    #cpu-cuda-row-lab .control-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.38;
+    }
+
+    #cpu-cuda-row-lab .control-btn.primary {
+      min-width: 100px;
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+
+    #cpu-cuda-row-lab .control-btn svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+    }
+
+    #cpu-cuda-row-lab .truth-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted-foreground);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    #cpu-cuda-row-lab .truth-label::before {
+      width: 8px;
+      height: 8px;
+      border: 2px solid var(--muted-foreground);
+      border-radius: 50%;
+      content: &quot;&quot;;
+    }
+
+    #cpu-cuda-row-lab .translation-strip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+    }
+
+    #cpu-cuda-row-lab .translation-node {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    #cpu-cuda-row-lab .translation-node.cpu-node {
+      border-left: 4px solid var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .translation-node.cuda-node {
+      border-left: 4px solid var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .translation-node code {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      color: var(--foreground);
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    #cpu-cuda-row-lab .translation-icon {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 6px;
+      background: var(--surface-strong);
+    }
+
+    #cpu-cuda-row-lab .translation-icon svg,
+    #cpu-cuda-row-lab .translation-arrow svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    #cpu-cuda-row-lab .translation-arrow {
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    #cpu-cuda-row-lab .lane {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    #cpu-cuda-row-lab .lane.cpu-lane {
+      border-top: 4px solid var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .lane.cuda-lane {
+      border-top: 4px solid var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .lane-header {
+      display: flex;
+      min-height: 54px;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+    }
+
+    #cpu-cuda-row-lab .lane-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    #cpu-cuda-row-lab .lane-mark {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--foreground);
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .lane-mark {
+      background: var(--cpu-soft);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .lane-mark {
+      background: var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .lane-mark svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    #cpu-cuda-row-lab .lane h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    #cpu-cuda-row-lab .lane-subtitle {
+      margin: 3px 0 0;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    #cpu-cuda-row-lab .lane-counter {
+      text-align: right;
+    }
+
+    #cpu-cuda-row-lab .lane-counter strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--foreground);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .progress-track {
+      position: relative;
+      height: 6px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: var(--surface-strong);
+    }
+
+    #cpu-cuda-row-lab .progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      border-radius: inherit;
+      transition: width 220ms ease;
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .progress-fill {
+      background: var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .progress-fill {
+      background: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .status-line {
+      display: flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 9px 10px;
+      border-left: 3px solid var(--border);
+      background: var(--background);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .status-line {
+      border-left-color: var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .status-line {
+      border-left-color: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .status-line .phase {
+      flex: 0 0 auto;
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .code-stack {
+      display: grid;
+      gap: 3px;
+      min-height: 177px;
+      margin-bottom: 14px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--background);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    #cpu-cuda-row-lab .code-line {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      min-width: 0;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: var(--muted-foreground);
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+
+    #cpu-cuda-row-lab .code-line::before {
+      color: var(--muted-foreground);
+      content: attr(data-line);
+      font-size: 10px;
+    }
+
+    #cpu-cuda-row-lab .code-line code {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    #cpu-cuda-row-lab .code-line.active {
+      color: var(--foreground);
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .code-line.active {
+      background: var(--cpu-soft);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .code-line.active {
+      background: var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .code-line.owner {
+      color: var(--foreground);
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .row-queue {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      margin: 7px 0 14px;
+    }
+
+    #cpu-cuda-row-lab .row-chip {
+      min-height: 44px;
+      padding: 7px 4px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--background);
+      color: var(--muted-foreground);
+      text-align: center;
+      transition: background-color 160ms ease, border-color 160ms ease;
+    }
+
+    #cpu-cuda-row-lab .row-chip strong,
+    #cpu-cuda-row-lab .row-chip span {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .row-chip.active {
+      border-color: var(--cpu);
+      background: var(--cpu-soft);
+      color: var(--foreground);
+    }
+
+    #cpu-cuda-row-lab .row-chip.done {
+      border-color: color-mix(in oklab, var(--done) 55%, var(--border));
+      background: var(--done-soft);
+      color: var(--foreground);
+    }
+
+    #cpu-cuda-row-lab .blocks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 7px 0 14px;
+    }
+
+    #cpu-cuda-row-lab .block {
+      min-width: 0;
+      padding: 7px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--background);
+    }
+
+    #cpu-cuda-row-lab .block-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 6px;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    #cpu-cuda-row-lab .thread-list {
+      display: grid;
+      gap: 5px;
+    }
+
+    #cpu-cuda-row-lab .thread-tile {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-height: 48px;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--foreground);
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 160ms ease, border-color 160ms ease;
+    }
+
+    #cpu-cuda-row-lab .thread-tile:hover {
+      border-color: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .thread-tile.selected {
+      border-color: var(--cuda);
+      background: var(--cuda-soft);
+      box-shadow: inset 4px 0 0 var(--cuda), 0 0 0 2px var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .thread-tile.complete {
+      border-color: color-mix(in oklab, var(--done) 55%, var(--border));
+    }
+
+    #cpu-cuda-row-lab .thread-tile.complete.selected {
+      border-color: var(--cuda);
+      background: color-mix(in oklab, var(--cuda) 16%, var(--done-soft));
+    }
+
+    #cpu-cuda-row-lab .thread-tile code,
+    #cpu-cuda-row-lab .thread-tile span {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    #cpu-cuda-row-lab .thread-tile span {
+      margin-top: 2px;
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .thread-pulse {
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+    }
+
+    #cpu-cuda-row-lab .thread-tile.running .thread-pulse {
+      border-color: var(--cuda);
+      background: var(--cuda);
+      box-shadow: 0 0 0 4px var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .thread-tile.complete .thread-pulse {
+      border-color: var(--done);
+      background: var(--done);
+    }
+
+    #cpu-cuda-row-lab .thread-legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 6px 0 8px;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    #cpu-cuda-row-lab .thread-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #cpu-cuda-row-lab .legend-mark {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    #cpu-cuda-row-lab .legend-mark.selected-mark {
+      border: 2px solid var(--cuda);
+      background: var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .legend-mark.ready-mark {
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      background: transparent;
+    }
+
+    #cpu-cuda-row-lab .legend-mark.active-mark {
+      border-radius: 50%;
+      background: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .legend-mark.complete-mark {
+      border-radius: 50%;
+      background: var(--done);
+    }
+
+    #cpu-cuda-row-lab .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(182px, 0.75fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    #cpu-cuda-row-lab .operand-area,
+    #cpu-cuda-row-lab .output-area {
+      min-width: 0;
+    }
+
+    #cpu-cuda-row-lab .operand-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: end;
+      gap: 6px;
+      margin-top: 7px;
+    }
+
+    #cpu-cuda-row-lab .operand-group {
+      min-width: 0;
+    }
+
+    #cpu-cuda-row-lab .operand-name {
+      display: block;
+      min-height: 18px;
+      overflow: hidden;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #cpu-cuda-row-lab .vector-cells {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(26px, 1fr));
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    #cpu-cuda-row-lab .vector-cell,
+    #cpu-cuda-row-lab .matrix-cell {
+      display: grid;
+      min-width: 0;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    #cpu-cuda-row-lab .vector-cell {
+      aspect-ratio: 1;
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .vector-cell.active,
+    #cpu-cuda-row-lab .cpu-lane .matrix-cell.active {
+      border-color: var(--cpu);
+      background: var(--cpu-soft);
+      transform: translateY(-1px);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .vector-cell.active,
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.active {
+      border-color: var(--cuda);
+      background: var(--cuda-soft);
+      transform: translateY(-1px);
+    }
+
+    #cpu-cuda-row-lab .times-sign {
+      padding-bottom: 8px;
+      color: var(--muted-foreground);
+      font-family: Georgia, &quot;Times New Roman&quot;, serif;
+      font-size: 20px;
+    }
+
+    #cpu-cuda-row-lab .formula-box {
+      min-height: 62px;
+      margin-top: 10px;
+      padding: 8px 9px;
+      border-left: 3px solid var(--border);
+      background: var(--background);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    #cpu-cuda-row-lab .cpu-lane .formula-box {
+      border-left-color: var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .formula-box {
+      border-left-color: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .formula-box strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--foreground);
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .formula-box span {
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .output-grid {
+      display: grid;
+      grid-template-columns: 24px repeat(3, minmax(34px, 1fr));
+      gap: 4px;
+      width: 100%;
+      margin-top: 7px;
+    }
+
+    #cpu-cuda-row-lab .matrix-cell {
+      min-height: 31px;
+    }
+
+    #cpu-cuda-row-lab .matrix-cell.axis {
+      min-height: 22px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted-foreground);
+      font-size: 10px;
+    }
+
+    #cpu-cuda-row-lab .matrix-cell.complete {
+      border-color: color-mix(in oklab, var(--done) 45%, var(--border));
+      background: var(--done-soft);
+    }
+
+    #cpu-cuda-row-lab .matrix-cell.row-focus:not(.active) {
+      border-color: color-mix(in oklab, var(--foreground) 18%, var(--border));
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.row-focus:not(.axis) {
+      border-color: var(--cuda);
+      background: var(--cuda-soft);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.axis.row-focus {
+      color: var(--cuda);
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.row-focus.active {
+      box-shadow: inset 0 0 0 1px var(--cuda);
+      transform: translateY(-1px);
+    }
+
+    #cpu-cuda-row-lab .finish-note {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding-top: 14px;
+    }
+
+    #cpu-cuda-row-lab .finish-note &gt; div {
+      min-width: 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--border);
+      background: var(--surface);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    #cpu-cuda-row-lab .finish-note .cpu-summary {
+      border-left-color: var(--cpu);
+    }
+
+    #cpu-cuda-row-lab .finish-note .cuda-summary {
+      border-left-color: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .finish-note strong {
+      display: block;
+      margin-bottom: 2px;
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .finish-note span {
+      color: var(--muted-foreground);
+    }
+
+    @media (max-width: 900px) {
+      #cpu-cuda-row-lab .workbench {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      #cpu-cuda-row-lab .lab-shell {
+        padding: 12px;
+      }
+
+      #cpu-cuda-row-lab .lab-header,
+      #cpu-cuda-row-lab .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      #cpu-cuda-row-lab .round-readout {
+        min-width: 0;
+      }
+
+      #cpu-cuda-row-lab .truth-label {
+        text-align: left;
+      }
+
+      #cpu-cuda-row-lab .translation-strip {
+        grid-template-columns: 1fr;
+      }
+
+      #cpu-cuda-row-lab .translation-arrow {
+        display: grid;
+        place-items: center;
+        transform: rotate(90deg);
+      }
+
+      #cpu-cuda-row-lab .workbench {
+        grid-template-columns: 1fr;
+      }
+
+      #cpu-cuda-row-lab .blocks {
+        grid-template-columns: 1fr;
+      }
+
+      #cpu-cuda-row-lab .control-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #cpu-cuda-row-lab .control-btn.primary {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 520px) {
+      #cpu-cuda-row-lab .compare-grid,
+      #cpu-cuda-row-lab .finish-note {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 390px) {
+      #cpu-cuda-row-lab .blocks {
+        grid-template-columns: 1fr;
+      }
+
+      #cpu-cuda-row-lab .lane-header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      #cpu-cuda-row-lab .lane-counter {
+        text-align: left;
+      }
+
+      #cpu-cuda-row-lab .operand-pair {
+        grid-template-columns: 1fr;
+      }
+
+      #cpu-cuda-row-lab .times-sign {
+        padding: 0;
+        text-align: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #cpu-cuda-row-lab *,
+      #cpu-cuda-row-lab *::before,
+      #cpu-cuda-row-lab *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  &lt;/style&gt;
+
+  &lt;main class=&quot;lab-shell&quot;&gt;
+    &lt;header class=&quot;lab-header&quot;&gt;
+      &lt;div&gt;
+        &lt;p class=&quot;eyebrow&quot;&gt;PMPP · Chapter 3 · Row-owning kernel&lt;/p&gt;
+        &lt;h1&gt;Where did the row loop go?&lt;/h1&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;round-readout&quot; aria-live=&quot;polite&quot;&gt;
+        &lt;span&gt;Conceptual round&lt;/span&gt;
+        &lt;strong id=&quot;round-counter&quot;&gt;0 / 48&lt;/strong&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+
+    &lt;div class=&quot;toolbar&quot; aria-label=&quot;Playback controls&quot;&gt;
+      &lt;div class=&quot;control-group&quot;&gt;
+        &lt;button class=&quot;control-btn&quot; id=&quot;reset-btn&quot; type=&quot;button&quot; aria-label=&quot;Reset visualization&quot;&gt;
+          &lt;i data-lucide=&quot;rotate-ccw&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Reset&lt;/span&gt;
+        &lt;/button&gt;
+        &lt;button class=&quot;control-btn&quot; id=&quot;prev-btn&quot; type=&quot;button&quot; aria-label=&quot;Previous conceptual round&quot;&gt;
+          &lt;i data-lucide=&quot;chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Previous&lt;/span&gt;
+        &lt;/button&gt;
+        &lt;button class=&quot;control-btn primary&quot; id=&quot;play-btn&quot; type=&quot;button&quot; aria-label=&quot;Play visualization&quot;&gt;
+          &lt;i data-lucide=&quot;play&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span id=&quot;play-label&quot;&gt;Play&lt;/span&gt;
+        &lt;/button&gt;
+        &lt;button class=&quot;control-btn&quot; id=&quot;next-btn&quot; type=&quot;button&quot; aria-label=&quot;Next conceptual round&quot;&gt;
+          &lt;span&gt;Next&lt;/span&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;truth-label&quot;&gt;Logical work rounds · not wall-clock timing&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;section class=&quot;translation-strip&quot; aria-label=&quot;Loop to grid translation&quot;&gt;
+      &lt;div class=&quot;translation-node cpu-node&quot;&gt;
+        &lt;div class=&quot;translation-icon&quot;&gt;&lt;i data-lucide=&quot;repeat-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;span class=&quot;micro-label&quot;&gt;CPU owns iteration&lt;/span&gt;&lt;code&gt;for (row = 0; row &amp;lt; 4; ++row)&lt;/code&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;translation-arrow&quot; aria-hidden=&quot;true&quot;&gt;&lt;i data-lucide=&quot;arrow-right&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+      &lt;div class=&quot;translation-node cuda-node&quot;&gt;
+        &lt;div class=&quot;translation-icon&quot;&gt;&lt;i data-lucide=&quot;grid-2x2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;span class=&quot;micro-label&quot;&gt;CUDA distributes iterations&lt;/span&gt;&lt;code&gt;thread row = blockIdx.y × blockDim.y + threadIdx.y&lt;/code&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;compare-grid&quot; aria-label=&quot;CPU and CUDA execution comparison&quot;&gt;
+      &lt;article class=&quot;lane cpu-lane&quot;&gt;
+        &lt;header class=&quot;lane-header&quot;&gt;
+          &lt;div class=&quot;lane-title&quot;&gt;
+            &lt;div class=&quot;lane-mark&quot;&gt;&lt;i data-lucide=&quot;cpu&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+            &lt;div&gt;&lt;h2&gt;CPU&lt;/h2&gt;&lt;p class=&quot;lane-subtitle&quot;&gt;one control flow walks rows&lt;/p&gt;&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;lane-counter&quot;&gt;&lt;span&gt;Scalar event&lt;/span&gt;&lt;strong id=&quot;cpu-counter&quot;&gt;0 / 48&lt;/strong&gt;&lt;/div&gt;
+        &lt;/header&gt;
+        &lt;div class=&quot;progress-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;progress-fill&quot; id=&quot;cpu-progress&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;status-line&quot; id=&quot;cpu-status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
+
+        &lt;div class=&quot;code-stack&quot; id=&quot;cpu-code&quot; aria-label=&quot;CPU loop structure&quot;&gt;
+          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cpu-row&quot;&gt;&lt;code&gt;for each row&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;2&quot; data-code=&quot;cpu-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;3&quot; data-code=&quot;cpu-zero&quot;&gt;&lt;code&gt;    sum = 0&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;4&quot; data-code=&quot;cpu-k&quot;&gt;&lt;code&gt;    for each shared index k&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;5&quot; data-code=&quot;cpu-mac&quot;&gt;&lt;code&gt;      sum += M[row,k] × N[k,j]&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;6&quot; data-code=&quot;cpu-store&quot;&gt;&lt;code&gt;    out[row,j] = sum&lt;/code&gt;&lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;span class=&quot;micro-label&quot;&gt;Outer row loop&lt;/span&gt;
+        &lt;div class=&quot;row-queue&quot; id=&quot;cpu-rows&quot; aria-label=&quot;CPU row loop progress&quot;&gt;&lt;/div&gt;
+
+        &lt;div class=&quot;workbench&quot;&gt;
+          &lt;div class=&quot;operand-area&quot;&gt;
+            &lt;span class=&quot;micro-label&quot;&gt;Current dot product&lt;/span&gt;
+            &lt;div class=&quot;operand-pair&quot;&gt;
+              &lt;div class=&quot;operand-group&quot;&gt;&lt;span class=&quot;operand-name&quot; id=&quot;cpu-m-name&quot;&gt;&lt;/span&gt;&lt;div class=&quot;vector-cells&quot; id=&quot;cpu-m-vector&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;span class=&quot;times-sign&quot; aria-hidden=&quot;true&quot;&gt;×&lt;/span&gt;
+              &lt;div class=&quot;operand-group&quot;&gt;&lt;span class=&quot;operand-name&quot; id=&quot;cpu-n-name&quot;&gt;&lt;/span&gt;&lt;div class=&quot;vector-cells&quot; id=&quot;cpu-n-vector&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;formula-box&quot; id=&quot;cpu-formula&quot;&gt;&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;output-area&quot;&gt;
+            &lt;span class=&quot;micro-label&quot;&gt;CPU output&lt;/span&gt;
+            &lt;div class=&quot;output-grid&quot; id=&quot;cpu-output&quot; aria-label=&quot;CPU output matrix&quot;&gt;&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/article&gt;
+
+      &lt;article class=&quot;lane cuda-lane&quot;&gt;
+        &lt;header class=&quot;lane-header&quot;&gt;
+          &lt;div class=&quot;lane-title&quot;&gt;
+            &lt;div class=&quot;lane-mark&quot;&gt;&lt;i data-lucide=&quot;boxes&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+            &lt;div&gt;&lt;h2&gt;CUDA&lt;/h2&gt;&lt;p class=&quot;lane-subtitle&quot;&gt;grid supplies one row per thread&lt;/p&gt;&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;lane-counter&quot;&gt;&lt;span&gt;Logical round&lt;/span&gt;&lt;strong id=&quot;cuda-counter&quot;&gt;0 / 12&lt;/strong&gt;&lt;/div&gt;
+        &lt;/header&gt;
+        &lt;div class=&quot;progress-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;progress-fill&quot; id=&quot;cuda-progress&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;status-line&quot; id=&quot;cuda-status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
+
+        &lt;div class=&quot;code-stack&quot; id=&quot;cuda-code&quot; aria-label=&quot;CUDA row-owning kernel structure&quot;&gt;
+          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cuda-row&quot;&gt;&lt;code&gt;row = blockIdx.y × blockDim.y + threadIdx.y&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;2&quot; data-code=&quot;cuda-guard&quot;&gt;&lt;code&gt;if row is inside the output&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;3&quot; data-code=&quot;cuda-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;4&quot; data-code=&quot;cuda-zero&quot;&gt;&lt;code&gt;    sum = 0&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;5&quot; data-code=&quot;cuda-k&quot;&gt;&lt;code&gt;    for each shared index k&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;6&quot; data-code=&quot;cuda-mac&quot;&gt;&lt;code&gt;      sum += M[row,k] × N[k,j]&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;7&quot; data-code=&quot;cuda-store&quot;&gt;&lt;code&gt;    out[row,j] = sum&lt;/code&gt;&lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;span class=&quot;micro-label&quot;&gt;2 blocks · 2 threads along y&lt;/span&gt;
+        &lt;div class=&quot;thread-legend&quot; aria-label=&quot;Thread state legend&quot;&gt;&lt;span&gt;&lt;i class=&quot;legend-mark selected-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;selected&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark ready-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;ready&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark active-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;active&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark complete-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;complete&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;blocks&quot; id=&quot;cuda-blocks&quot; aria-label=&quot;CUDA thread to row assignments&quot;&gt;&lt;/div&gt;
+
+        &lt;div class=&quot;workbench&quot;&gt;
+          &lt;div class=&quot;operand-area&quot;&gt;
+            &lt;span class=&quot;micro-label&quot;&gt;Selected thread&#x27;s dot product&lt;/span&gt;
+            &lt;div class=&quot;operand-pair&quot;&gt;
+              &lt;div class=&quot;operand-group&quot;&gt;&lt;span class=&quot;operand-name&quot; id=&quot;cuda-m-name&quot;&gt;&lt;/span&gt;&lt;div class=&quot;vector-cells&quot; id=&quot;cuda-m-vector&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;span class=&quot;times-sign&quot; aria-hidden=&quot;true&quot;&gt;×&lt;/span&gt;
+              &lt;div class=&quot;operand-group&quot;&gt;&lt;span class=&quot;operand-name&quot; id=&quot;cuda-n-name&quot;&gt;&lt;/span&gt;&lt;div class=&quot;vector-cells&quot; id=&quot;cuda-n-vector&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;formula-box&quot; id=&quot;cuda-formula&quot;&gt;&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;output-area&quot;&gt;
+            &lt;span class=&quot;micro-label&quot;&gt;CUDA output&lt;/span&gt;
+            &lt;div class=&quot;output-grid&quot; id=&quot;cuda-output&quot; aria-label=&quot;CUDA output matrix&quot;&gt;&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/article&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;finish-note&quot; aria-label=&quot;Execution ownership summary&quot;&gt;
+      &lt;div class=&quot;cpu-summary&quot;&gt;&lt;strong&gt;CPU: row changes inside one execution.&lt;/strong&gt;&lt;span&gt;The outer loop updates the row variable after finishing each output row.&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;cuda-summary&quot;&gt;&lt;strong&gt;CUDA: row differs across executions.&lt;/strong&gt;&lt;span&gt;The launch creates kernel instances whose built-in coordinates produce different rows.&lt;/span&gt;&lt;/div&gt;
+    &lt;/section&gt;
+  &lt;/main&gt;
+
+  &lt;script src=&quot;https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js&quot;&gt;&lt;/script&gt;
+  &lt;script&gt;
+    (() =&gt; {
+      const root = document.getElementById(&quot;cpu-cuda-row-lab&quot;);
+      if (!root) return;
+
+      const rows = 4;
+      const inner = 3;
+      const cols = 3;
+      const blockDimY = 2;
+      const matrixM = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+        [10, 11, 12]
+      ];
+      const matrixN = [
+        [1, 0, 2],
+        [0, 1, 2],
+        [1, 1, 0]
+      ];
+
+      const cpuOps = [];
+      for (let row = 0; row &lt; rows; row += 1) {
+        for (let col = 0; col &lt; cols; col += 1) {
+          for (let k = 0; k &lt; inner; k += 1) cpuOps.push({ type: &quot;mac&quot;, row, col, k });
+          cpuOps.push({ type: &quot;store&quot;, row, col });
+        }
+      }
+
+      const cudaOps = [];
+      for (let col = 0; col &lt; cols; col += 1) {
+        for (let k = 0; k &lt; inner; k += 1) cudaOps.push({ type: &quot;mac&quot;, col, k });
+        cudaOps.push({ type: &quot;store&quot;, col });
+      }
+
+      let step = 0;
+      let selectedRow = 0;
+      let timer = null;
+
+      const byId = (id) =&gt; root.querySelector(`#${id}`);
+
+      function emptyGrid() {
+        return Array.from({ length: rows }, () =&gt; Array(cols).fill(null));
+      }
+
+      function zeroGrid() {
+        return Array.from({ length: rows }, () =&gt; Array(cols).fill(0));
+      }
+
+      function replayCpu(count) {
+        const sums = zeroGrid();
+        const output = emptyGrid();
+        cpuOps.slice(0, count).forEach((op) =&gt; {
+          if (op.type === &quot;mac&quot;) sums[op.row][op.col] += matrixM[op.row][op.k] * matrixN[op.k][op.col];
+          else output[op.row][op.col] = sums[op.row][op.col];
+        });
+        return { sums, output };
+      }
+
+      function replayCuda(count) {
+        const sums = zeroGrid();
+        const output = emptyGrid();
+        cudaOps.slice(0, count).forEach((op) =&gt; {
+          if (op.type === &quot;mac&quot;) {
+            for (let row = 0; row &lt; rows; row += 1) sums[row][op.col] += matrixM[row][op.k] * matrixN[op.k][op.col];
+          } else {
+            for (let row = 0; row &lt; rows; row += 1) output[row][op.col] = sums[row][op.col];
+          }
+        });
+        return { sums, output };
+      }
+
+      function activeOp(ops, count) {
+        if (count &lt;= 0) return null;
+        return ops[Math.min(count, ops.length) - 1];
+      }
+
+      function formatValue(value) {
+        return value === null ? &quot;·&quot; : String(value);
+      }
+
+      function renderVector(target, values, activeIndex) {
+        target.innerHTML = values.map((value, index) =&gt; (
+          `&lt;div class=&quot;vector-cell${index === activeIndex ? &quot; active&quot; : &quot;&quot;}&quot;&gt;${value}&lt;/div&gt;`
+        )).join(&quot;&quot;);
+      }
+
+      function renderOutput(target, values, highlight, rowFocus) {
+        const cells = [&#x27;&lt;div class=&quot;matrix-cell axis&quot;&gt;&lt;/div&gt;&#x27;];
+        for (let col = 0; col &lt; cols; col += 1) cells.push(`&lt;div class=&quot;matrix-cell axis&quot;&gt;c${col}&lt;/div&gt;`);
+        for (let row = 0; row &lt; rows; row += 1) {
+          cells.push(`&lt;div class=&quot;matrix-cell axis${row === rowFocus ? &quot; row-focus&quot; : &quot;&quot;}&quot;&gt;r${row}&lt;/div&gt;`);
+          for (let col = 0; col &lt; cols; col += 1) {
+            const value = values[row][col];
+            const classes = [&quot;matrix-cell&quot;];
+            if (value !== null) classes.push(&quot;complete&quot;);
+            if (row === rowFocus) classes.push(&quot;row-focus&quot;);
+            if (highlight &amp;&amp; highlight.row === row &amp;&amp; highlight.col === col) classes.push(&quot;active&quot;);
+            cells.push(`&lt;div class=&quot;${classes.join(&quot; &quot;)}&quot;&gt;${formatValue(value)}&lt;/div&gt;`);
+          }
+        }
+        target.innerHTML = cells.join(&quot;&quot;);
+      }
+
+      function setCodeActive(containerId, keys) {
+        root.querySelectorAll(`#${containerId} .code-line`).forEach((line) =&gt; {
+          line.classList.toggle(&quot;active&quot;, keys.includes(line.dataset.code));
+        });
+      }
+
+      function renderCpuRows(cpuCount, active) {
+        const eventsPerRow = cols * (inner + 1);
+        byId(&quot;cpu-rows&quot;).innerHTML = Array.from({ length: rows }, (_, row) =&gt; {
+          const start = row * eventsPerRow;
+          const end = start + eventsPerRow;
+          const classes = [&quot;row-chip&quot;];
+          let state = &quot;waiting&quot;;
+          if (cpuCount &gt;= end) {
+            classes.push(&quot;done&quot;);
+            state = &quot;done&quot;;
+          } else if (active &amp;&amp; active.row === row) {
+            classes.push(&quot;active&quot;);
+            state = &quot;current&quot;;
+          }
+          return `&lt;div class=&quot;${classes.join(&quot; &quot;)}&quot;&gt;&lt;strong&gt;row ${row}&lt;/strong&gt;&lt;span&gt;${state}&lt;/span&gt;&lt;/div&gt;`;
+        }).join(&quot;&quot;);
+      }
+
+      function renderCudaBlocks(cudaCount) {
+        const running = cudaCount &gt; 0 &amp;&amp; cudaCount &lt; cudaOps.length;
+        const complete = cudaCount &gt;= cudaOps.length;
+        const blocks = [];
+        for (let block = 0; block &lt; 2; block += 1) {
+          const threads = [];
+          for (let thread = 0; thread &lt; blockDimY; thread += 1) {
+            const row = block * blockDimY + thread;
+            const classes = [&quot;thread-tile&quot;];
+            if (row === selectedRow) classes.push(&quot;selected&quot;);
+            if (running) classes.push(&quot;running&quot;);
+            if (complete) classes.push(&quot;complete&quot;);
+            threads.push(
+              `&lt;button class=&quot;${classes.join(&quot; &quot;)}&quot; type=&quot;button&quot; data-thread-row=&quot;${row}&quot; aria-pressed=&quot;${row === selectedRow}&quot;&gt;` +
+              `&lt;div&gt;&lt;code&gt;B${block} · T${thread}&lt;/code&gt;&lt;span&gt;${block} × ${blockDimY} + ${thread} = row ${row}&lt;/span&gt;&lt;/div&gt;&lt;span class=&quot;thread-pulse&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;/button&gt;`
+            );
+          }
+          blocks.push(`&lt;div class=&quot;block&quot;&gt;&lt;div class=&quot;block-label&quot;&gt;&lt;span&gt;block ${block}&lt;/span&gt;&lt;span&gt;blockIdx.y = ${block}&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;thread-list&quot;&gt;${threads.join(&quot;&quot;)}&lt;/div&gt;&lt;/div&gt;`);
+        }
+        byId(&quot;cuda-blocks&quot;).innerHTML = blocks.join(&quot;&quot;);
+      }
+
+      function render() {
+        const cpuCount = Math.min(step, cpuOps.length);
+        const cudaCount = Math.min(step, cudaOps.length);
+        const cpuState = replayCpu(cpuCount);
+        const cudaState = replayCuda(cudaCount);
+        const cpuActive = activeOp(cpuOps, cpuCount);
+        const cudaActive = activeOp(cudaOps, cudaCount);
+
+        byId(&quot;round-counter&quot;).textContent = `${step} / ${cpuOps.length}`;
+        byId(&quot;cpu-counter&quot;).textContent = `${cpuCount} / ${cpuOps.length}`;
+        byId(&quot;cuda-counter&quot;).textContent = `${cudaCount} / ${cudaOps.length}`;
+        byId(&quot;cpu-progress&quot;).style.width = `${(cpuCount / cpuOps.length) * 100}%`;
+        byId(&quot;cuda-progress&quot;).style.width = `${(cudaCount / cudaOps.length) * 100}%`;
+        byId(&quot;prev-btn&quot;).disabled = step === 0;
+        byId(&quot;next-btn&quot;).disabled = step === cpuOps.length;
+
+        let cpuRow = cpuActive ? cpuActive.row : 0;
+        let cpuCol = cpuActive ? cpuActive.col : 0;
+        let cpuK = cpuActive &amp;&amp; cpuActive.type === &quot;mac&quot; ? cpuActive.k : -1;
+        if (step === 0) {
+          byId(&quot;cpu-status&quot;).innerHTML = &#x27;&lt;span&gt;outer loop ready&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;row = 0&lt;/span&gt;&#x27;;
+          byId(&quot;cpu-formula&quot;).innerHTML = &#x27;&lt;strong&gt;No scalar work yet&lt;/strong&gt;&lt;span&gt;The CPU will enter row 0 first.&lt;/span&gt;&#x27;;
+          setCodeActive(&quot;cpu-code&quot;, [&quot;cpu-row&quot;]);
+        } else if (cpuActive.type === &quot;mac&quot;) {
+          const product = matrixM[cpuRow][cpuK] * matrixN[cpuK][cpuCol];
+          byId(&quot;cpu-status&quot;).innerHTML = `&lt;span&gt;row ${cpuRow} → col ${cpuCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;k = ${cpuK}&lt;/span&gt;`;
+          byId(&quot;cpu-formula&quot;).innerHTML = `&lt;strong&gt;sum[${cpuRow},${cpuCol}] += ${matrixM[cpuRow][cpuK]} × ${matrixN[cpuK][cpuCol]}&lt;/strong&gt;&lt;span&gt;product ${product} · accumulator ${cpuState.sums[cpuRow][cpuCol]}&lt;/span&gt;`;
+          setCodeActive(&quot;cpu-code&quot;, [&quot;cpu-row&quot;, &quot;cpu-col&quot;, &quot;cpu-k&quot;, &quot;cpu-mac&quot;]);
+        } else {
+          byId(&quot;cpu-status&quot;).innerHTML = `&lt;span&gt;row ${cpuRow} → col ${cpuCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;store&lt;/span&gt;`;
+          byId(&quot;cpu-formula&quot;).innerHTML = `&lt;strong&gt;out[${cpuRow},${cpuCol}] = ${cpuState.output[cpuRow][cpuCol]}&lt;/strong&gt;&lt;span&gt;one output element is complete.&lt;/span&gt;`;
+          setCodeActive(&quot;cpu-code&quot;, [&quot;cpu-row&quot;, &quot;cpu-col&quot;, &quot;cpu-store&quot;]);
+        }
+
+        renderCpuRows(cpuCount, cpuActive);
+        byId(&quot;cpu-m-name&quot;).textContent = `M row ${cpuRow}`;
+        byId(&quot;cpu-n-name&quot;).textContent = `N column ${cpuCol}`;
+        renderVector(byId(&quot;cpu-m-vector&quot;), matrixM[cpuRow], cpuK);
+        renderVector(byId(&quot;cpu-n-vector&quot;), matrixN.map((row) =&gt; row[cpuCol]), cpuK);
+        renderOutput(byId(&quot;cpu-output&quot;), cpuState.output, cpuActive ? { row: cpuRow, col: cpuCol } : null, cpuRow);
+
+        let cudaCol = cudaActive ? cudaActive.col : 0;
+        let cudaK = cudaActive &amp;&amp; cudaActive.type === &quot;mac&quot; ? cudaActive.k : -1;
+        const hasSelection = selectedRow !== null;
+        const inspectionRow = hasSelection ? selectedRow : 0;
+        const selectedBlock = Math.floor(inspectionRow / blockDimY);
+        const selectedThread = inspectionRow % blockDimY;
+        const selectedIdentity = `B${selectedBlock} · T${selectedThread}`;
+        if (step === 0) {
+          byId(&quot;cuda-status&quot;).innerHTML = &#x27;&lt;span&gt;4 kernel instances ready&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;rows 0–3&lt;/span&gt;&#x27;;
+          setCodeActive(&quot;cuda-code&quot;, [&quot;cuda-row&quot;, &quot;cuda-guard&quot;]);
+        } else if (cudaCount &gt;= cudaOps.length &amp;&amp; step &gt; cudaOps.length) {
+          byId(&quot;cuda-status&quot;).innerHTML = &#x27;&lt;span&gt;row work complete&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;12 rounds&lt;/span&gt;&#x27;;
+          setCodeActive(&quot;cuda-code&quot;, []);
+        } else if (cudaActive.type === &quot;mac&quot;) {
+          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;4 row threads → col ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;k = ${cudaK}&lt;/span&gt;`;
+          setCodeActive(&quot;cuda-code&quot;, [&quot;cuda-col&quot;, &quot;cuda-k&quot;, &quot;cuda-mac&quot;]);
+        } else {
+          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;4 row threads → col ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;store&lt;/span&gt;`;
+          setCodeActive(&quot;cuda-code&quot;, [&quot;cuda-col&quot;, &quot;cuda-store&quot;]);
+        }
+
+        if (!hasSelection) {
+          byId(&quot;cuda-formula&quot;).innerHTML = &#x27;&lt;strong&gt;No thread selected&lt;/strong&gt;&lt;span&gt;Select a thread to inspect its private row work. Select it again to clear the inspection.&lt;/span&gt;&#x27;;
+        } else if (step === 0) {
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;Selected ${selectedIdentity} → owns output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Every blue output cell belongs to this thread.&lt;/span&gt;`;
+        } else if (cudaCount &gt;= cudaOps.length &amp;&amp; step &gt; cudaOps.length) {
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity} finished output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Its green dot means complete; its blue outline means selected.&lt;/span&gt;`;
+        } else if (cudaActive.type === &quot;mac&quot;) {
+          const product = matrixM[inspectionRow][cudaK] * matrixN[cudaK][cudaCol];
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity}, row ${inspectionRow}: sum += ${matrixM[inspectionRow][cudaK]} × ${matrixN[cudaK][cudaCol]}&lt;/strong&gt;&lt;span&gt;product ${product} · private accumulator ${cudaState.sums[inspectionRow][cudaCol]}&lt;/span&gt;`;
+        } else {
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity}, row ${inspectionRow}: out[${inspectionRow},${cudaCol}] = ${cudaState.output[inspectionRow][cudaCol]}&lt;/strong&gt;&lt;span&gt;all four threads store their own row element.&lt;/span&gt;`;
+        }
+
+        renderCudaBlocks(cudaCount);
+        byId(&quot;cuda-m-name&quot;).textContent = hasSelection ? `M row ${inspectionRow}` : &quot;M row —&quot;;
+        byId(&quot;cuda-n-name&quot;).textContent = hasSelection ? `N column ${cudaCol}` : &quot;N column —&quot;;
+        renderVector(byId(&quot;cuda-m-vector&quot;), hasSelection ? matrixM[inspectionRow] : Array(inner).fill(&quot;·&quot;), hasSelection ? cudaK : -1);
+        renderVector(byId(&quot;cuda-n-vector&quot;), hasSelection ? matrixN.map((row) =&gt; row[cudaCol]) : Array(inner).fill(&quot;·&quot;), hasSelection ? cudaK : -1);
+        renderOutput(byId(&quot;cuda-output&quot;), cudaState.output, hasSelection &amp;&amp; cudaActive ? { row: inspectionRow, col: cudaCol } : null, hasSelection ? inspectionRow : null);
+
+        if (window.lucide) window.lucide.createIcons({ attrs: { &quot;stroke-width&quot;: 1.8 } });
+      }
+
+      function stop() {
+        if (timer !== null) window.clearInterval(timer);
+        timer = null;
+        byId(&quot;play-label&quot;).textContent = &quot;Play&quot;;
+        byId(&quot;play-btn&quot;).setAttribute(&quot;aria-label&quot;, &quot;Play visualization&quot;);
+        byId(&quot;play-btn&quot;).innerHTML = &#x27;&lt;i data-lucide=&quot;play&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span id=&quot;play-label&quot;&gt;Play&lt;/span&gt;&#x27;;
+        if (window.lucide) window.lucide.createIcons({ attrs: { &quot;stroke-width&quot;: 1.8 } });
+      }
+
+      function play() {
+        if (timer !== null) {
+          stop();
+          return;
+        }
+        if (step &gt;= cpuOps.length) step = 0;
+        byId(&quot;play-btn&quot;).innerHTML = &#x27;&lt;i data-lucide=&quot;pause&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span id=&quot;play-label&quot;&gt;Pause&lt;/span&gt;&#x27;;
+        byId(&quot;play-btn&quot;).setAttribute(&quot;aria-label&quot;, &quot;Pause visualization&quot;);
+        if (window.lucide) window.lucide.createIcons({ attrs: { &quot;stroke-width&quot;: 1.8 } });
+        timer = window.setInterval(() =&gt; {
+          step += 1;
+          render();
+          if (step &gt;= cpuOps.length) stop();
+        }, 650);
+        render();
+      }
+
+      byId(&quot;reset-btn&quot;).addEventListener(&quot;click&quot;, () =&gt; {
+        stop();
+        step = 0;
+        render();
+      });
+      byId(&quot;prev-btn&quot;).addEventListener(&quot;click&quot;, () =&gt; {
+        stop();
+        step = Math.max(0, step - 1);
+        render();
+      });
+      byId(&quot;next-btn&quot;).addEventListener(&quot;click&quot;, () =&gt; {
+        stop();
+        step = Math.min(cpuOps.length, step + 1);
+        render();
+      });
+      byId(&quot;play-btn&quot;).addEventListener(&quot;click&quot;, play);
+      byId(&quot;cuda-blocks&quot;).addEventListener(&quot;click&quot;, (event) =&gt; {
+        const thread = event.target.closest(&quot;[data-thread-row]&quot;);
+        if (!thread) return;
+        const clickedRow = Number(thread.dataset.threadRow);
+        selectedRow = selectedRow === clickedRow ? null : clickedRow;
+        render();
+      });
+      root.addEventListener(&quot;keydown&quot;, (event) =&gt; {
+        if (event.key === &quot;ArrowRight&quot;) {
+          stop();
+          step = Math.min(cpuOps.length, step + 1);
+          render();
+        } else if (event.key === &quot;ArrowLeft&quot;) {
+          stop();
+          step = Math.max(0, step - 1);
+          render();
+        }
+      });
+
+      render();
+    })();
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
