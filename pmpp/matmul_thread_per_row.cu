@@ -1,3 +1,20 @@
+/*
+ * Result from https://leetgpu.com/playground, using RTX 3070
+ *
+ * Running in FUNCTIONAL mode...
+ * Compiling...
+ * Executing...
+ *
+ * Printing the output matrix:
+ * 38.000000 47.000000 56.000000 65.000000
+ * 50.000000 62.000000 74.000000 86.000000
+ * 62.000000 77.000000 92.000000 107.000000
+ * 74.000000 92.000000 110.000000 128.000000
+ * 86.000000 107.000000 128.000000 149.000000
+ * Exit status: 0
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
