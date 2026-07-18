@@ -2,3 +2,5 @@
 CONTEXT.md
 tutor_harness.md
 .DS_Store
+build/
+*.out
