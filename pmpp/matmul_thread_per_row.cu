@@ -1,9 +1,9 @@
 /*
- * Result from https://leetgpu.com/playground, using RTX 3070
- *
- * Running in FUNCTIONAL mode...
- * Compiling...
- * Executing...
+ * Modal run:
+ * make modal SRC=pmpp/matmul_thread_per_row.cu
+ * image: nvidia/cuda:12.8.1-devel-ubuntu24.04
+ * GPU: NVIDIA RTX PRO 6000 Blackwell Server Edition
+ * compute capability: 12.0
  *
  * Printing the output matrix:
  * 38.000000 47.000000 56.000000 65.000000
@@ -11,9 +11,9 @@
  * 62.000000 77.000000 92.000000 107.000000
  * 74.000000 92.000000 110.000000 128.000000
  * 86.000000 107.000000 128.000000 149.000000
- * Exit status: 0
- *
  */
+
+#include "cuda_helpers.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +23,8 @@ __global__ void MatMulKernel(const float *M_d, const float *N_d, float *out_d, s
 void matmul(const float *M_h, const float *N_h, float *out_h, size_t row_M, size_t col_M, size_t col_N);
 
 int main(void) {
+  printGpuInfo();
+
   size_t row_M = 5;
   size_t col_M = 3;
   size_t col_N = 4;

@@ -1,9 +1,13 @@
+#include "cuda_helpers.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
 __global__ void vecAddKernel(float *A, float *B, float *C, int n);
 
 int main() {
+  printGpuInfo();
+
   int n = 1 << 20; // 1M elements
   int size = n * sizeof(float);
 

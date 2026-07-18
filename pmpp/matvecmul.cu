@@ -1,3 +1,5 @@
+#include "cuda_helpers.h"
+
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +15,8 @@ __global__ void matrixVectorMultiplyKernel(float *input_matrix, float *input_vec
 void matrixVectorMultiply(float *output_vector_h, float *input_matrix_h, float *input_vector_h, size_t dimension);
 
 int main(void) {
+  printGpuInfo();
+
   size_t dimension = 4;
   float *input_matrix_h = (float *)malloc(dimension * dimension * sizeof(float));
   float *input_vector_h = (float *)malloc(dimension * sizeof(float));
