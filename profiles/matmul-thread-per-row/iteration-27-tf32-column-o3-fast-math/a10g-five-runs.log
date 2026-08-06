@@ -1,0 +1,30 @@
+RUN=1
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.235 ms
+Copy-plus-kernel average time over 10 launches: 0.760 ms
+Sample validation passed for 4 positions; first=360013472.000000 last=2508516352.000000
+RUN=2
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.232 ms
+Copy-plus-kernel average time over 10 launches: 0.745 ms
+Sample validation passed for 4 positions; first=360013472.000000 last=2508516352.000000
+RUN=3
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.234 ms
+Copy-plus-kernel average time over 10 launches: 0.744 ms
+Sample validation passed for 4 positions; first=360013472.000000 last=2508516352.000000
+RUN=4
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.233 ms
+Copy-plus-kernel average time over 10 launches: 0.740 ms
+Sample validation passed for 4 positions; first=360013472.000000 last=2508516352.000000
+RUN=5
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.232 ms
+Copy-plus-kernel average time over 10 launches: 0.760 ms
+Sample validation passed for 4 positions; first=360013472.000000 last=2508516352.000000
