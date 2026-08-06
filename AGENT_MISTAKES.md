@@ -106,3 +106,17 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:profiles/matmul-thread-per-row/iteration-01-row-block-32/README.md:25
+
+### MISTAKE-20260806-003
+- id: MISTAKE-20260806-003
+- status: resolved
+- severity: low
+- scope_tags: [code, profiling]
+- pattern: wmma source was compiled without an architecture target that enables wmma declarations
+- prevention_rule: compile Tensor Core WMMA variants with an explicit architecture matching the profiled GPU
+- validation_check: the profile reproduction command includes `-arch=sm_86` and the WMMA source compiles on the A10G run
+- first_seen: 2026-08-06
+- last_seen: 2026-08-06
+- occurrence_count: 1
+- evidence:
+  - file:profiles/matmul-thread-per-row/iteration-12-tf32-wmma/matmul_thread_per_row.cu:1
