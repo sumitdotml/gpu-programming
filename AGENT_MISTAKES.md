@@ -78,3 +78,31 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:tutor_harness.md:69
+
+### MISTAKE-20260806-001
+- id: MISTAKE-20260806-001
+- status: active
+- severity: low
+- scope_tags: [config, infra]
+- pattern: modal shell invocation assumes a pty is available in non-interactive execution
+- prevention_rule: pass `--no-pty` when running `modal shell` from a non-interactive agent or CI environment
+- validation_check: a non-interactive `modal shell --no-pty ... -c true` completes without an `Inappropriate ioctl for device` error
+- first_seen: 2026-08-06
+- last_seen: 2026-08-06
+- occurrence_count: 1
+- evidence:
+  - file:Makefile:14
+
+### MISTAKE-20260806-002
+- id: MISTAKE-20260806-002
+- status: resolved
+- severity: low
+- scope_tags: [docs, profiling]
+- pattern: documented benchmark median did not match the listed samples
+- prevention_rule: calculate every reported aggregate from the retained raw samples and compare it to the table before finalizing the profile document
+- validation_check: a script recomputes the documented median from `a10g-five-runs.log` and matches the README value
+- first_seen: 2026-08-06
+- last_seen: 2026-08-06
+- occurrence_count: 1
+- evidence:
+  - file:profiles/matmul-thread-per-row/iteration-01-row-block-32/README.md:25

@@ -1,0 +1,26 @@
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+RUN=1
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 4.557 ms
+Sample validation passed for 4 positions; first=360014880.000000 last=2508542976.000000
+RUN=2
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.526 ms
+Sample validation passed for 4 positions; first=360014880.000000 last=2508542976.000000
+RUN=3
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.523 ms
+Sample validation passed for 4 positions; first=360014880.000000 last=2508542976.000000
+RUN=4
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.523 ms
+Sample validation passed for 4 positions; first=360014880.000000 last=2508542976.000000
+RUN=5
+GPU: NVIDIA A10
+compute capability: 8.6
+Kernel average time over 10 launches: 0.665 ms
+Sample validation passed for 4 positions; first=360014880.000000 last=2508542976.000000
