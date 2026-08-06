@@ -120,3 +120,17 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:profiles/matmul-thread-per-row/iteration-12-tf32-wmma/matmul_thread_per_row.cu:1
+
+### MISTAKE-20260806-004
+- id: MISTAKE-20260806-004
+- status: resolved
+- severity: low
+- scope_tags: [editing]
+- pattern: attempted an exact edit using a source string that appeared in both a declaration and definition
+- prevention_rule: include the distinguishing terminator or surrounding context when replacing a symbol that may be declared and defined in one file
+- validation_check: use an exact unique edit string
+- first_seen: 2026-08-06
+- last_seen: 2026-08-06
+- occurrence_count: 1
+- evidence:
+  - file:profiles/matmul-thread-per-row/iteration-20-tf32-launch-bounds-64/matmul_thread_per_row.cu:35
