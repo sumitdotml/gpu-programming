@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Row vs Column Ownership</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --panel-2: #f0f0ed;
+    --border: #dcdcd6;
+    --fg: #1d1d1b;
+    --muted: #6b6b66;
+    --accent: #2f6fd6;
+    --row: #d27a1f;
+    --col: #2f6fd6;
+    --t0: #2f6fd6;
+    --t1: #d2508f;
+    --t2: #7d5ad6;
+    --t3: #1f9b92;
+    --t4: #c9861a;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181818;
+      --panel: #202020;
+      --panel-2: #2a2a2a;
+      --border: #383838;
+      --fg: #ececea;
+      --muted: #9a9a95;
+      --accent: #6ea8ff;
+      --row: #f0a45a;
+      --col: #6ea8ff;
+      --t0: #6ea8ff;
+      --t1: #f08fc0;
+      --t2: #aa91ef;
+      --t3: #5acbc2;
+      --t4: #e8c060;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding-block: 16px;
+    padding-inline: 18px;
+  }
+
+  header.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 10px 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 28px;
+    font-weight: 500;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+  }
+  .group { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; cursor: pointer; }
+  .btn {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .round-box {
+    padding: 6px 12px;
+    border-left: 3px solid var(--accent);
+    background: var(--panel-2);
+    font-family: var(--mono);
+  }
+  .round-box span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .round-box strong { font-size: 18px; font-weight: 500; }
+  .hint-line {
+    margin: 8px 0 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .lanes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+  .lane {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--lane);
+    border-radius: 10px;
+    background: var(--panel);
+  }
+  .lane.row-lane { --lane: var(--row); }
+  .lane.col-lane { --lane: var(--col); }
+  .lane-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 14px;
+    margin-bottom: 10px;
+  }
+  .lane-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+  .lane-head h2 span { color: var(--lane); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--mono); font-size: 11px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .tag.par { background: color-mix(in oklab, var(--lane) 18%, transparent); color: var(--lane); }
+  .tag.seq { background: var(--panel-2); color: var(--muted); }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--lane);
+    background: var(--panel-2);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .status span:last-child { color: var(--muted); }
+
+  .micro {
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* threads */
+  .threads {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .thread {
+    display: grid;
+    align-content: start;
+    gap: 5px;
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--owner);
+    border-radius: 7px;
+    background: var(--panel);
+    color: var(--fg);
+    text-align: left;
+  }
+  .thread:hover { border-color: var(--owner); }
+  .thread[aria-pressed="true"] {
+    border-color: var(--owner);
+    background: color-mix(in oklab, var(--owner) 12%, var(--panel));
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--owner) 30%, transparent);
+  }
+  .thread code { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .thread .owns, .thread .prog {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .strip { display: grid; gap: 3px; justify-content: start; }
+  .strip i {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid color-mix(in oklab, var(--owner) 45%, var(--border));
+    border-radius: 3px;
+    background: color-mix(in oklab, var(--owner) 8%, transparent);
+  }
+  .strip i.filled { border-color: var(--owner); background: color-mix(in oklab, var(--owner) 55%, transparent); }
+  .strip i.current { border-color: var(--owner); box-shadow: 0 0 0 2px color-mix(in oklab, var(--owner) 45%, transparent); }
+
+  /* work area */
+  .work {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .mats { display: flex; flex-wrap: wrap; gap: 12px; }
+  .mat-title { margin: 0 0 5px; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .mat-title span { color: var(--muted); font-weight: 400; }
+  .grid { display: grid; gap: 3px; }
+  .cell {
+    display: grid;
+    place-items: center;
+    min-width: 30px;
+    height: 28px;
+    padding: 0 3px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--panel);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+  .cell.axis { border-color: transparent; background: transparent; color: var(--muted); font-size: 10px; min-width: 20px; }
+  .cell.axis.hot { color: var(--fg); font-weight: 700; }
+  .cell.use {
+    border-color: var(--owner);
+    background: color-mix(in oklab, var(--owner) 24%, transparent);
+    font-weight: 600;
+  }
+  .formula {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--owner, var(--lane));
+    background: var(--panel-2);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  .formula strong { display: block; font-size: 12px; }
+  .formula span { color: var(--muted); }
+
+  .cell.out {
+    border-color: color-mix(in oklab, var(--owner) 40%, var(--border));
+    background: color-mix(in oklab, var(--owner) 7%, transparent);
+    color: var(--muted);
+  }
+  .cell.out.done {
+    border-color: var(--owner);
+    background: color-mix(in oklab, var(--owner) 32%, transparent);
+    color: var(--fg);
+  }
+  .cell.out.now { box-shadow: inset 0 0 0 2px var(--owner); }
+  .cell.out.sel { outline: 2px dashed color-mix(in oklab, var(--owner) 70%, transparent); outline-offset: 1px; }
+  .cell.owner-lbl {
+    border-color: transparent;
+    background: transparent;
+    color: var(--owner);
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .round-shape {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .round-shape strong { display: block; font-size: 12px; }
+  .round-shape span { color: var(--muted); }
+
+  /* bottom */
+  .bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .card {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+  }
+  .card h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  th.row-h { color: var(--row); }
+  th.col-h { color: var(--col); }
+  tr:last-child td { border-bottom: 0; }
+  .watch { border-left: 3px solid var(--t4); }
+  .watch ol, .yours ol { margin: 0; padding-left: 20px; line-height: 1.6; }
+  .yours { border-style: dashed; }
+  .card code { font-family: var(--mono); font-size: 12px; }
+
+  @media (max-width: 1250px) {
+    .work { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 980px) {
+    .lanes, .bottom { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .threads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    h1 { font-size: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">PMPP · Chapter 3 · Exercise 1(a) vs 1(b)</p>
+      <h1>Row vs column ownership</h1>
+    </div>
+    <div class="toolbar">
+      <div class="group">
+        <button class="btn" id="reset" type="button">Reset</button>
+        <button class="btn" id="prev" type="button">‹ Previous</button>
+        <button class="btn primary" id="play" type="button">Play</button>
+        <button class="btn" id="next" type="button">Next ›</button>
+      </div>
+      <div class="round-box" aria-live="polite"><span>Logical round</span><strong id="round">0 / 5</strong></div>
+    </div>
+  </header>
+  <p class="hint-line">Same M (5×3) and N (3×4) as your .cu files · one shared clock steps both kernels · logical rounds, not wall-clock timing · ← / → keys step · click a thread to inspect it</p>
+
+  <section class="lanes">
+    <article class="lane row-lane" id="lane-row"></article>
+    <article class="lane col-lane" id="lane-col"></article>
+  </section>
+
+  <section class="bottom">
+    <div class="card">
+      <h3>Side by side</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th></th><th class="row-h">thread per row</th><th class="col-h">thread per column</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>one thread owns</th><td>one output row</td><td>one output column</td></tr>
+            <tr><th>threads needed</th><td>row_M = 5</td><td>col_N = 4</td></tr>
+            <tr><th>elements per thread</th><td>col_N = 4</td><td>row_M = 5</td></tr>
+            <tr><th>loop inside each thread</th><td>j walks along its row</td><td>i walks down its column</td></tr>
+            <tr><th>dot product per element</th><td>k = 0..2 (same)</td><td>k = 0..2 (same)</td></tr>
+            <tr><th>one round's new cells</th><td>stacked down one column</td><td>side by side in one row</td></tr>
+            <tr><th>total work</th><td>20 dot products</td><td>20 dot products</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card watch">
+      <h3>Watch (answer these yourself)</h3>
+      <ol>
+        <li>Select thread 0 on both sides and press Next a few times. On each side, which highlight in M or N <em>moves</em> each round, and which <em>stays put</em>?</li>
+        <li>Why does the row side finish a round earlier?</li>
+        <li>For the column kernel: which parts of the row kernel's code would you keep, and which would you change?</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="card yours" style="margin-top:14px">
+    <h3>Not shown here on purpose (your part of the exercise)</h3>
+    <ol>
+      <li>Which thread dimension the column kernel should use, <code>.x</code> or <code>.y</code>, and why.</li>
+      <li>The column kernel's one-line global index and what its guard compares against.</li>
+      <li>The flat row-major index expressions for the M read, the N read and the out write.</li>
+      <li>The launch config: <code>dimBlock</code>, <code>dimGrid</code>, and how many threads sit idle with 3 threads per block.</li>
+    </ol>
+  </section>
+
+<script>
+(() => {
+  const R = 5;   // rows of M and out
+  const K = 3;   // cols of M = rows of N
+  const C = 4;   // cols of N and out
+  const M = Array.from({ length: R }, (_, i) => Array.from({ length: K }, (_, k) => i + k + 2));
+  const N = Array.from({ length: K }, (_, k) => Array.from({ length: C }, (_, j) => k + j + 3));
+  const OUT = Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => {
+    let s = 0;
+    for (let k = 0; k < K; k += 1) s += M[i][k] * N[k][j];
+    return s;
+  }));
+  const colors = ["var(--t0)", "var(--t1)", "var(--t2)", "var(--t3)", "var(--t4)"];
+  const MAX_STEP = Math.max(R, C);
+
+  let step = 0;
+  let timer = null;
+  const $ = (id) => document.getElementById(id);
+
+  // Each lane describes one kernel. A thread t owns one output line and
+  // walks the other axis one element per logical round.
+  const lanes = {
+    row: {
+      el: $("lane-row"),
+      title: 'Thread per <span>row</span>',
+      par: "rows across threads",
+      seq: "j walks along each thread's row",
+      threads: R,
+      rounds: C,
+      line: "row",
+      loopVar: "j",
+      cellFor: (t, r) => ({ i: t, j: r }),
+      selected: 0,
+    },
+    col: {
+      el: $("lane-col"),
+      title: 'Thread per <span>column</span>',
+      par: "columns across threads",
+      seq: "i walks down each thread's column",
+      threads: C,
+      rounds: R,
+      line: "column",
+      loopVar: "i",
+      cellFor: (t, r) => ({ i: r, j: t }),
+      selected: 0,
+    },
+  };
+
+  function currentRound(lane) {
+    return step > 0 && step <= lane.rounds ? step - 1 : null;
+  }
+  function doneRounds(lane) {
+    return Math.min(step, lane.rounds);
+  }
+
+  function shell(key, lane) {
+    lane.el.innerHTML =
+      `<div class="lane-head"><h2>${lane.title}</h2>` +
+      `<div class="tags"><span class="tag par">parallel · ${lane.par}</span><span class="tag seq">sequential · ${lane.seq}</span></div></div>` +
+      `<div class="status" data-part="status"></div>` +
+      `<p class="micro">${lane.threads} threads · click one to inspect</p>` +
+      `<div class="threads" data-part="threads" style="--n:${lane.threads}"></div>` +
+      `<div class="work">` +
+        `<div><p class="micro">What the selected thread reads</p><div class="mats">` +
+          `<div><p class="mat-title">M <span data-part="m-hint"></span></p><div class="grid" data-part="m"></div></div>` +
+          `<div><p class="mat-title">N <span data-part="n-hint"></span></p><div class="grid" data-part="n"></div></div>` +
+        `</div><div class="formula" data-part="formula"></div></div>` +
+        `<div><p class="micro">Output 5×4 · colour = owner</p><div class="grid" data-part="out"></div>` +
+        `<div class="round-shape" data-part="shape"></div></div>` +
+      `</div>`;
+    lane.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-t]");
+      if (!btn) return;
+      lane.selected = Number(btn.dataset.t);
+      render();
+    });
+  }
+
+  const part = (lane, name) => lane.el.querySelector(`[data-part="${name}"]`);
+
+  function matrixHtml(rows, cols, data, useCell, rowLabel, colLabel, hotRow, hotCol, owner) {
+    const out = [`<div class="cell axis"></div>`];
+    for (let c = 0; c < cols; c += 1) out.push(`<div class="cell axis${c === hotCol ? " hot" : ""}">${colLabel}${c}</div>`);
+    for (let r = 0; r < rows; r += 1) {
+      out.push(`<div class="cell axis${r === hotRow ? " hot" : ""}">${rowLabel}${r}</div>`);
+      for (let c = 0; c < cols; c += 1) {
+        out.push(`<div class="cell${useCell(r, c) ? " use" : ""}" style="--owner:${owner}">${data[r][c]}</div>`);
+      }
+    }
+    return out.join("");
+  }
+
+  function renderLane(key, lane) {
+    const cur = currentRound(lane);
+    const done = doneRounds(lane);
+    const finished = step >= lane.rounds;
+
+    // status
+    let left;
+    let right;
+    if (step === 0) {
+      left = `${lane.threads} threads ready, each knows its ${lane.line}`;
+      right = "nothing stored";
+    } else if (cur === null) {
+      left = `finished after ${lane.rounds} rounds`;
+      right = `${lane.threads} × ${lane.rounds} = ${lane.threads * lane.rounds} cells stored`;
+    } else {
+      left = `round ${cur}: every thread on ${lane.loopVar} = ${cur}`;
+      right = `${lane.threads} threads × 1 element`;
+    }
+    if (finished && step === lane.rounds) {
+      left = `round ${lane.rounds - 1}: every thread on ${lane.loopVar} = ${lane.rounds - 1}`;
+      right = "last round · kernel done";
+    }
+    part(lane, "status").innerHTML = `<span>${left}</span><span>${right}</span>`;
+
+    // threads
+    const vertical = lane.line === "column";
+    const stripStyle = vertical
+      ? `grid-template-rows: repeat(${lane.rounds}, 14px);`
+      : `grid-template-columns: repeat(${lane.rounds}, 14px);`;
+    const tiles = [];
+    for (let t = 0; t < lane.threads; t += 1) {
+      const cells = [];
+      for (let r = 0; r < lane.rounds; r += 1) {
+        const cls = [];
+        if (r < done) cls.push("filled");
+        if (r === cur) cls.push("current");
+        cells.push(`<i class="${cls.join(" ")}"></i>`);
+      }
+      const prog = step === 0 ? `0/${lane.rounds}` : finished ? `done ${lane.rounds}/${lane.rounds}` : `${lane.loopVar}=${cur} · ${done}/${lane.rounds}`;
+      tiles.push(
+        `<button class="thread" type="button" data-t="${t}" aria-pressed="${t === lane.selected}" style="--owner:${colors[t]}">` +
+        `<code>thread ${t}</code><span class="owns">owns ${lane.line} ${t}</span>` +
+        `<div class="strip" style="${stripStyle}" aria-hidden="true">${cells.join("")}</div>` +
+        `<span class="prog">${prog}</span></button>`
+      );
+    }
+    part(lane, "threads").innerHTML = tiles.join("");
+
+    // operands
+    const owner = colors[lane.selected];
+    const active = step > 0;
+    const r = cur === null ? lane.rounds - 1 : cur;
+    const { i, j } = lane.cellFor(lane.selected, r);
+    const mGrid = part(lane, "m");
+    const nGrid = part(lane, "n");
+    mGrid.style.gridTemplateColumns = `20px repeat(${K}, minmax(30px, 1fr))`;
+    nGrid.style.gridTemplateColumns = `20px repeat(${C}, minmax(30px, 1fr))`;
+    mGrid.innerHTML = matrixHtml(R, K, M, (a) => active && a === i, "i", "k", active ? i : -1, -1, owner);
+    nGrid.innerHTML = matrixHtml(K, C, N, (_, b) => active && b === j, "k", "j", -1, active ? j : -1, owner);
+    part(lane, "m-hint").textContent = active ? `· row ${i}` : "";
+    part(lane, "n-hint").textContent = active ? `· column ${j}` : "";
+
+    const f = part(lane, "formula");
+    f.style.setProperty("--owner", owner);
+    if (!active) {
+      f.innerHTML = `<strong>thread ${lane.selected} owns output ${lane.line} ${lane.selected}</strong><span>Press Next to see what it reads first.</span>`;
+    } else {
+      const terms = [];
+      for (let k = 0; k < K; k += 1) terms.push(`${M[i][k]}×${N[k][j]}`);
+      const verb = cur === null ? "stored (last)" : "computing";
+      f.innerHTML = `<strong>thread ${lane.selected} ${verb} out[${i}][${j}]</strong>` +
+        `<span>M row ${i} · N column ${j} = ${terms.join(" + ")} = </span><strong style="display:inline">${OUT[i][j]}</strong>`;
+    }
+
+    // output
+    const byRow = lane.line === "row";
+    const cells = [`<div class="cell axis"></div>`];
+    for (let c = 0; c < C; c += 1) {
+      cells.push(`<div class="cell axis${byRow && cur === c ? " hot" : ""}">j${c}</div>`);
+    }
+    if (byRow) cells.push(`<div class="cell axis"></div>`);
+    for (let a = 0; a < R; a += 1) {
+      cells.push(`<div class="cell axis${!byRow && cur === a ? " hot" : ""}">i${a}</div>`);
+      for (let b = 0; b < C; b += 1) {
+        const t = byRow ? a : b;
+        const round = byRow ? b : a;
+        const cls = ["cell", "out"];
+        const isDone = round < done;
+        if (isDone) cls.push("done");
+        if (round === cur) cls.push("now");
+        if (t === lane.selected) cls.push("sel");
+        cells.push(`<div class="${cls.join(" ")}" style="--owner:${colors[t]}">${isDone ? OUT[a][b] : "·"}</div>`);
+      }
+      if (byRow) cells.push(`<div class="cell owner-lbl" style="--owner:${colors[a]}">← t${a}</div>`);
+    }
+    if (!byRow) {
+      cells.push(`<div class="cell axis"></div>`);
+      for (let b = 0; b < C; b += 1) cells.push(`<div class="cell owner-lbl" style="--owner:${colors[b]}">↑ t${b}</div>`);
+    }
+    const outGrid = part(lane, "out");
+    outGrid.style.gridTemplateColumns = byRow
+      ? `20px repeat(${C}, minmax(32px, 1fr)) auto`
+      : `20px repeat(${C}, minmax(32px, 1fr))`;
+    outGrid.innerHTML = cells.join("");
+
+    const shape = part(lane, "shape");
+    if (cur === null && step === 0) {
+      shape.innerHTML = `<strong>Each round</strong><span>every thread stores one cell of its own ${lane.line}.</span>`;
+    } else if (cur === null) {
+      shape.innerHTML = `<strong>Done</strong><span>${lane.threads} threads × ${lane.rounds} elements = ${lane.threads * lane.rounds} cells.</span>`;
+    } else {
+      const where = byRow ? `stacked down column j${cur}` : `side by side in row i${cur}`;
+      shape.innerHTML = `<strong>This round's ${lane.threads} new cells</strong><span>${where}, one per thread.</span>`;
+    }
+  }
+
+  function render() {
+    renderLane("row", lanes.row);
+    renderLane("col", lanes.col);
+    $("round").textContent = `${step} / ${MAX_STEP}`;
+    $("prev").disabled = step === 0;
+    $("next").disabled = step >= MAX_STEP;
+  }
+
+  function stop() {
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+    $("play").textContent = "Play";
+  }
+  function go(delta) {
+    stop();
+    step = Math.max(0, Math.min(MAX_STEP, step + delta));
+    render();
+  }
+
+  shell("row", lanes.row);
+  shell("col", lanes.col);
+  $("reset").addEventListener("click", () => { stop(); step = 0; render(); });
+  $("prev").addEventListener("click", () => go(-1));
+  $("next").addEventListener("click", () => go(1));
+  $("play").addEventListener("click", () => {
+    if (timer !== null) { stop(); return; }
+    if (step >= MAX_STEP) step = 0;
+    $("play").textContent = "Pause";
+    timer = setInterval(() => {
+      step += 1;
+      render();
+      if (step >= MAX_STEP) stop();
+    }, 1300);
+    render();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") go(1);
+    else if (e.key === "ArrowLeft") go(-1);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
