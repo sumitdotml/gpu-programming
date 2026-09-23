@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>CPU vs CUDA Row Loop</title>
-<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:1180px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
 </head>
 <body>
 <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="CPU vs CUDA Row Loop" srcdoc="&lt;!doctype html&gt;
@@ -773,7 +773,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
 
     #cpu-cuda-row-lab .lab-shell {
-      width: min(1180px, 100%);
+      width: 100%;
       margin: 0 auto;
       padding: 18px;
     }
@@ -1525,6 +1525,197 @@ html&gt;body{padding:0}&lt;/style&gt;
       color: var(--muted-foreground);
     }
 
+
+    #cpu-cuda-row-lab .code-line:has(.axis-tag) {
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+    }
+
+    #cpu-cuda-row-lab .axis-tag {
+      display: inline-block;
+      white-space: nowrap;
+      margin-left: 8px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 500;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    #cpu-cuda-row-lab .axis-tag.parallel {
+      background: var(--cuda-soft);
+      color: var(--cuda);
+    }
+
+    #cpu-cuda-row-lab .axis-tag.sequential {
+      background: var(--surface-strong);
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .thread-tile {
+      border-left: 4px solid var(--owner, var(--border));
+    }
+
+    #cpu-cuda-row-lab .thread-tile.selected {
+      border-color: var(--owner, var(--cuda));
+      background: color-mix(in oklab, var(--owner, var(--cuda)) 14%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--owner, var(--cuda)) 30%, transparent);
+    }
+
+    #cpu-cuda-row-lab .thread-row-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 18px);
+      gap: 3px;
+      margin-top: 5px;
+    }
+
+    #cpu-cuda-row-lab .thread-row-strip i {
+      display: block;
+      height: 12px;
+      border: 1px solid color-mix(in oklab, var(--owner) 45%, var(--border));
+      border-radius: 3px;
+      background: color-mix(in oklab, var(--owner) 8%, transparent);
+    }
+
+    #cpu-cuda-row-lab .thread-row-strip i.filled {
+      border-color: var(--owner);
+      background: color-mix(in oklab, var(--owner) 55%, transparent);
+    }
+
+    #cpu-cuda-row-lab .thread-row-strip i.current {
+      border-color: var(--owner);
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--owner) 35%, transparent);
+    }
+
+    #cpu-cuda-row-lab .thread-tile .thread-progress {
+      margin-top: 3px;
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .ownership-callout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    #cpu-cuda-row-lab .ownership-callout &gt; div {
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    #cpu-cuda-row-lab .ownership-callout strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #cpu-cuda-row-lab .ownership-callout span {
+      color: var(--muted-foreground);
+    }
+
+    #cpu-cuda-row-lab .output-grid.owned {
+      grid-template-columns: 24px repeat(3, minmax(34px, 1fr)) auto;
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.owned-cell {
+      border-color: color-mix(in oklab, var(--owner) 40%, var(--border));
+      background: color-mix(in oklab, var(--owner) 7%, transparent);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.owned-cell.complete {
+      border-color: var(--owner);
+      background: color-mix(in oklab, var(--owner) 30%, transparent);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.owned-cell.row-focus {
+      border-color: var(--owner);
+      background: color-mix(in oklab, var(--owner) 14%, transparent);
+      box-shadow: inset 0 0 0 1px var(--owner);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.owned-cell.complete.row-focus {
+      background: color-mix(in oklab, var(--owner) 40%, transparent);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.owned-cell.active {
+      box-shadow: inset 0 0 0 2px var(--owner);
+      transform: translateY(-1px);
+    }
+
+    #cpu-cuda-row-lab .cuda-lane .matrix-cell.axis.j-cursor {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+
+    #cpu-cuda-row-lab .matrix-cell.owner-label {
+      justify-items: start;
+      padding: 0 6px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--owner);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    #cpu-cuda-row-lab .grid-caption {
+      margin-top: 6px;
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    #cpu-cuda-row-lab .finish-note .misread-note {
+      grid-column: 1 / -1;
+      border-left-color: var(--viz-series-4);
+    }
+
+    @media (min-width: 1360px) {
+      #cpu-cuda-row-lab .compare-grid {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      }
+
+      #cpu-cuda-row-lab .translation-strip {
+        grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.2fr);
+      }
+
+      #cpu-cuda-row-lab .finish-note {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      }
+
+      #cpu-cuda-row-lab .cpu-lane .lane-body {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      }
+
+      #cpu-cuda-row-lab .lane-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+
+      #cpu-cuda-row-lab .lane-body &gt; .workbench {
+        grid-template-columns: 1fr;
+        position: sticky;
+        top: 12px;
+      }
+
+      #cpu-cuda-row-lab .lane-body .blocks {
+        margin-bottom: 10px;
+      }
+    }
+
     @media (max-width: 900px) {
       #cpu-cuda-row-lab .workbench {
         grid-template-columns: 1fr;
@@ -1532,6 +1723,16 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
 
     @media (max-width: 620px) {
+      #cpu-cuda-row-lab .code-line:has(.axis-tag) {
+        grid-template-columns: 18px minmax(0, 1fr);
+      }
+
+      #cpu-cuda-row-lab .axis-tag {
+        grid-column: 2;
+        justify-self: start;
+        margin: 2px 0 0;
+      }
+
       #cpu-cuda-row-lab .lab-shell {
         padding: 12px;
       }
@@ -1564,7 +1765,8 @@ html&gt;body{padding:0}&lt;/style&gt;
         grid-template-columns: 1fr;
       }
 
-      #cpu-cuda-row-lab .blocks {
+      #cpu-cuda-row-lab .blocks,
+      #cpu-cuda-row-lab .ownership-callout {
         grid-template-columns: 1fr;
       }
 
@@ -1586,7 +1788,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
 
     @media (max-width: 390px) {
-      #cpu-cuda-row-lab .blocks {
+      #cpu-cuda-row-lab .blocks,
+      #cpu-cuda-row-lab .ownership-callout {
         grid-template-columns: 1fr;
       }
 
@@ -1671,11 +1874,13 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;lane-counter&quot;&gt;&lt;span&gt;Scalar event&lt;/span&gt;&lt;strong id=&quot;cpu-counter&quot;&gt;0 / 48&lt;/strong&gt;&lt;/div&gt;
         &lt;/header&gt;
         &lt;div class=&quot;progress-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;progress-fill&quot; id=&quot;cpu-progress&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;lane-body&quot;&gt;
+          &lt;div class=&quot;lane-main&quot;&gt;
         &lt;div class=&quot;status-line&quot; id=&quot;cpu-status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
 
         &lt;div class=&quot;code-stack&quot; id=&quot;cpu-code&quot; aria-label=&quot;CPU loop structure&quot;&gt;
-          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cpu-row&quot;&gt;&lt;code&gt;for each row&lt;/code&gt;&lt;/div&gt;
-          &lt;div class=&quot;code-line&quot; data-line=&quot;2&quot; data-code=&quot;cpu-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cpu-row&quot;&gt;&lt;code&gt;for each row&lt;/code&gt;&lt;span class=&quot;axis-tag sequential&quot;&gt;sequential&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;2&quot; data-code=&quot;cpu-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;span class=&quot;axis-tag sequential&quot;&gt;sequential&lt;/span&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;3&quot; data-code=&quot;cpu-zero&quot;&gt;&lt;code&gt;    sum = 0&lt;/code&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;4&quot; data-code=&quot;cpu-k&quot;&gt;&lt;code&gt;    for each shared index k&lt;/code&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;5&quot; data-code=&quot;cpu-mac&quot;&gt;&lt;code&gt;      sum += M[row,k] × N[k,j]&lt;/code&gt;&lt;/div&gt;
@@ -1685,6 +1890,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;span class=&quot;micro-label&quot;&gt;Outer row loop&lt;/span&gt;
         &lt;div class=&quot;row-queue&quot; id=&quot;cpu-rows&quot; aria-label=&quot;CPU row loop progress&quot;&gt;&lt;/div&gt;
 
+          &lt;/div&gt;
         &lt;div class=&quot;workbench&quot;&gt;
           &lt;div class=&quot;operand-area&quot;&gt;
             &lt;span class=&quot;micro-label&quot;&gt;Current dot product&lt;/span&gt;
@@ -1700,6 +1906,7 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;div class=&quot;output-grid&quot; id=&quot;cpu-output&quot; aria-label=&quot;CPU output matrix&quot;&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/div&gt;
+        &lt;/div&gt;
       &lt;/article&gt;
 
       &lt;article class=&quot;lane cuda-lane&quot;&gt;
@@ -1711,12 +1918,14 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;lane-counter&quot;&gt;&lt;span&gt;Logical round&lt;/span&gt;&lt;strong id=&quot;cuda-counter&quot;&gt;0 / 12&lt;/strong&gt;&lt;/div&gt;
         &lt;/header&gt;
         &lt;div class=&quot;progress-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;progress-fill&quot; id=&quot;cuda-progress&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;lane-body&quot;&gt;
+          &lt;div class=&quot;lane-main&quot;&gt;
         &lt;div class=&quot;status-line&quot; id=&quot;cuda-status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
 
         &lt;div class=&quot;code-stack&quot; id=&quot;cuda-code&quot; aria-label=&quot;CUDA row-owning kernel structure&quot;&gt;
-          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cuda-row&quot;&gt;&lt;code&gt;row = blockIdx.y × blockDim.y + threadIdx.y&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line owner&quot; data-line=&quot;1&quot; data-code=&quot;cuda-row&quot;&gt;&lt;code&gt;row = blockIdx.y × blockDim.y + threadIdx.y&lt;/code&gt;&lt;span class=&quot;axis-tag parallel&quot;&gt;parallel · one row per thread&lt;/span&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;2&quot; data-code=&quot;cuda-guard&quot;&gt;&lt;code&gt;if row is inside the output&lt;/code&gt;&lt;/div&gt;
-          &lt;div class=&quot;code-line&quot; data-line=&quot;3&quot; data-code=&quot;cuda-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;/div&gt;
+          &lt;div class=&quot;code-line&quot; data-line=&quot;3&quot; data-code=&quot;cuda-col&quot;&gt;&lt;code&gt;  for each output column j&lt;/code&gt;&lt;span class=&quot;axis-tag sequential&quot;&gt;sequential · inside each thread&lt;/span&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;4&quot; data-code=&quot;cuda-zero&quot;&gt;&lt;code&gt;    sum = 0&lt;/code&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;5&quot; data-code=&quot;cuda-k&quot;&gt;&lt;code&gt;    for each shared index k&lt;/code&gt;&lt;/div&gt;
           &lt;div class=&quot;code-line&quot; data-line=&quot;6&quot; data-code=&quot;cuda-mac&quot;&gt;&lt;code&gt;      sum += M[row,k] × N[k,j]&lt;/code&gt;&lt;/div&gt;
@@ -1727,6 +1936,12 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;thread-legend&quot; aria-label=&quot;Thread state legend&quot;&gt;&lt;span&gt;&lt;i class=&quot;legend-mark selected-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;selected&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark ready-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;ready&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark active-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;active&lt;/span&gt;&lt;span&gt;&lt;i class=&quot;legend-mark complete-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;complete&lt;/span&gt;&lt;/div&gt;
         &lt;div class=&quot;blocks&quot; id=&quot;cuda-blocks&quot; aria-label=&quot;CUDA thread to row assignments&quot;&gt;&lt;/div&gt;
 
+        &lt;div class=&quot;ownership-callout&quot; aria-live=&quot;polite&quot;&gt;
+          &lt;div&gt;&lt;strong id=&quot;round-work-title&quot;&gt;This round&lt;/strong&gt;&lt;span id=&quot;round-work-body&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;strong&gt;Whole kernel&lt;/strong&gt;&lt;span&gt;4 threads × 3 elements each = 12 elements. Each thread owns one full output row and fills it left → right with its own j loop.&lt;/span&gt;&lt;/div&gt;
+        &lt;/div&gt;
+
+          &lt;/div&gt;
         &lt;div class=&quot;workbench&quot;&gt;
           &lt;div class=&quot;operand-area&quot;&gt;
             &lt;span class=&quot;micro-label&quot;&gt;Selected thread&#x27;s dot product&lt;/span&gt;
@@ -1739,15 +1954,18 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;/div&gt;
           &lt;div class=&quot;output-area&quot;&gt;
             &lt;span class=&quot;micro-label&quot;&gt;CUDA output&lt;/span&gt;
-            &lt;div class=&quot;output-grid&quot; id=&quot;cuda-output&quot; aria-label=&quot;CUDA output matrix&quot;&gt;&lt;/div&gt;
+            &lt;div class=&quot;output-grid owned&quot; id=&quot;cuda-output&quot; aria-label=&quot;CUDA output matrix&quot;&gt;&lt;/div&gt;
+            &lt;div class=&quot;grid-caption&quot;&gt;Colour = owning thread. Each coloured row belongs to one thread for the whole kernel. The bold column header is the j that every thread is on right now.&lt;/div&gt;
           &lt;/div&gt;
+        &lt;/div&gt;
         &lt;/div&gt;
       &lt;/article&gt;
     &lt;/section&gt;
 
     &lt;section class=&quot;finish-note&quot; aria-label=&quot;Execution ownership summary&quot;&gt;
       &lt;div class=&quot;cpu-summary&quot;&gt;&lt;strong&gt;CPU: row changes inside one execution.&lt;/strong&gt;&lt;span&gt;The outer loop updates the row variable after finishing each output row.&lt;/span&gt;&lt;/div&gt;
-      &lt;div class=&quot;cuda-summary&quot;&gt;&lt;strong&gt;CUDA: row differs across executions.&lt;/strong&gt;&lt;span&gt;The launch creates kernel instances whose built-in coordinates produce different rows.&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;cuda-summary&quot;&gt;&lt;strong&gt;CUDA: row differs across executions.&lt;/strong&gt;&lt;span&gt;The launch creates kernel instances whose built-in coordinates produce different rows. Rows run in parallel across threads; the j loop still runs sequentially inside each thread.&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;misread-note&quot;&gt;&lt;strong&gt;Why the output seems to fill column by column.&lt;/strong&gt;&lt;span&gt;Every thread is on the same j at the same time, so each round shows 4 new cells in one column. Those are 4 different threads, each finishing element j of its own row. It is not one element per thread: after 3 rounds each thread has written 3 elements, a whole row. One element per thread is a different kernel, the next PMPP step, where j comes from the thread index instead of a loop.&lt;/span&gt;&lt;/div&gt;
     &lt;/section&gt;
   &lt;/main&gt;
 
@@ -1761,6 +1979,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       const inner = 3;
       const cols = 3;
       const blockDimY = 2;
+      const ownerColors = [&quot;var(--viz-series-1)&quot;, &quot;var(--viz-series-4)&quot;, &quot;var(--viz-series-5)&quot;, &quot;var(--viz-series-6)&quot;];
+      const ownerLabel = (row) =&gt; `B${Math.floor(row / blockDimY)}·T${row % blockDimY}`;
       const matrixM = [
         [1, 2, 3],
         [4, 5, 6],
@@ -1839,19 +2059,29 @@ html&gt;body{padding:0}&lt;/style&gt;
         )).join(&quot;&quot;);
       }
 
-      function renderOutput(target, values, highlight, rowFocus) {
+      function renderOutput(target, values, highlight, rowFocus, ownership) {
         const cells = [&#x27;&lt;div class=&quot;matrix-cell axis&quot;&gt;&lt;/div&gt;&#x27;];
-        for (let col = 0; col &lt; cols; col += 1) cells.push(`&lt;div class=&quot;matrix-cell axis&quot;&gt;c${col}&lt;/div&gt;`);
+        for (let col = 0; col &lt; cols; col += 1) {
+          const cursor = ownership &amp;&amp; ownership.col === col ? &quot; j-cursor&quot; : &quot;&quot;;
+          cells.push(`&lt;div class=&quot;matrix-cell axis${cursor}&quot;&gt;${ownership ? &quot;j=&quot; : &quot;c&quot;}${col}&lt;/div&gt;`);
+        }
+        if (ownership) cells.push(&#x27;&lt;div class=&quot;matrix-cell axis&quot;&gt;owner&lt;/div&gt;&#x27;);
         for (let row = 0; row &lt; rows; row += 1) {
+          const owner = ownership ? ` style=&quot;--owner: ${ownerColors[row]}&quot;` : &quot;&quot;;
           cells.push(`&lt;div class=&quot;matrix-cell axis${row === rowFocus ? &quot; row-focus&quot; : &quot;&quot;}&quot;&gt;r${row}&lt;/div&gt;`);
           for (let col = 0; col &lt; cols; col += 1) {
             const value = values[row][col];
             const classes = [&quot;matrix-cell&quot;];
+            if (ownership) classes.push(&quot;owned-cell&quot;);
             if (value !== null) classes.push(&quot;complete&quot;);
             if (row === rowFocus) classes.push(&quot;row-focus&quot;);
-            if (highlight &amp;&amp; highlight.row === row &amp;&amp; highlight.col === col) classes.push(&quot;active&quot;);
-            cells.push(`&lt;div class=&quot;${classes.join(&quot; &quot;)}&quot;&gt;${formatValue(value)}&lt;/div&gt;`);
+            const isActive = ownership
+              ? ownership.col === col
+              : highlight &amp;&amp; highlight.row === row &amp;&amp; highlight.col === col;
+            if (isActive) classes.push(&quot;active&quot;);
+            cells.push(`&lt;div class=&quot;${classes.join(&quot; &quot;)}&quot;${owner}&gt;${formatValue(value)}&lt;/div&gt;`);
           }
+          if (ownership) cells.push(`&lt;div class=&quot;matrix-cell owner-label&quot;${owner}&gt;← ${ownerLabel(row)}&lt;/div&gt;`);
         }
         target.innerHTML = cells.join(&quot;&quot;);
       }
@@ -1880,8 +2110,9 @@ html&gt;body{padding:0}&lt;/style&gt;
         }).join(&quot;&quot;);
       }
 
-      function renderCudaBlocks(cudaCount) {
+      function renderCudaBlocks(cudaCount, cudaState, cudaActive) {
         const running = cudaCount &gt; 0 &amp;&amp; cudaCount &lt; cudaOps.length;
+        const currentCol = running &amp;&amp; cudaActive ? cudaActive.col : null;
         const complete = cudaCount &gt;= cudaOps.length;
         const blocks = [];
         for (let block = 0; block &lt; 2; block += 1) {
@@ -1892,9 +2123,23 @@ html&gt;body{padding:0}&lt;/style&gt;
             if (row === selectedRow) classes.push(&quot;selected&quot;);
             if (running) classes.push(&quot;running&quot;);
             if (complete) classes.push(&quot;complete&quot;);
+            const doneCount = cudaState.output[row].filter((value) =&gt; value !== null).length;
+            const strip = Array.from({ length: cols }, (_, col) =&gt; {
+              const cellClasses = [];
+              if (cudaState.output[row][col] !== null) cellClasses.push(&quot;filled&quot;);
+              if (col === currentCol) cellClasses.push(&quot;current&quot;);
+              return `&lt;i class=&quot;${cellClasses.join(&quot; &quot;)}&quot;&gt;&lt;/i&gt;`;
+            }).join(&quot;&quot;);
+            const progress = complete
+              ? `row ${row} done · ${cols}/${cols}`
+              : currentCol === null
+                ? `owns row ${row} · 0/${cols}`
+                : `on j = ${currentCol} · ${doneCount}/${cols} done`;
             threads.push(
-              `&lt;button class=&quot;${classes.join(&quot; &quot;)}&quot; type=&quot;button&quot; data-thread-row=&quot;${row}&quot; aria-pressed=&quot;${row === selectedRow}&quot;&gt;` +
-              `&lt;div&gt;&lt;code&gt;B${block} · T${thread}&lt;/code&gt;&lt;span&gt;${block} × ${blockDimY} + ${thread} = row ${row}&lt;/span&gt;&lt;/div&gt;&lt;span class=&quot;thread-pulse&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;/button&gt;`
+              `&lt;button class=&quot;${classes.join(&quot; &quot;)}&quot; type=&quot;button&quot; data-thread-row=&quot;${row}&quot; aria-pressed=&quot;${row === selectedRow}&quot; style=&quot;--owner: ${ownerColors[row]}&quot;&gt;` +
+              `&lt;div&gt;&lt;code&gt;B${block} · T${thread}&lt;/code&gt;&lt;span&gt;${block} × ${blockDimY} + ${thread} = row ${row}&lt;/span&gt;` +
+              `&lt;div class=&quot;thread-row-strip&quot; aria-hidden=&quot;true&quot;&gt;${strip}&lt;/div&gt;&lt;span class=&quot;thread-progress&quot;&gt;${progress}&lt;/span&gt;&lt;/div&gt;` +
+              `&lt;span class=&quot;thread-pulse&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;/button&gt;`
             );
           }
           blocks.push(`&lt;div class=&quot;block&quot;&gt;&lt;div class=&quot;block-label&quot;&gt;&lt;span&gt;block ${block}&lt;/span&gt;&lt;span&gt;blockIdx.y = ${block}&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;thread-list&quot;&gt;${threads.join(&quot;&quot;)}&lt;/div&gt;&lt;/div&gt;`);
@@ -1957,19 +2202,19 @@ html&gt;body{padding:0}&lt;/style&gt;
           byId(&quot;cuda-status&quot;).innerHTML = &#x27;&lt;span&gt;row work complete&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;12 rounds&lt;/span&gt;&#x27;;
           setCodeActive(&quot;cuda-code&quot;, []);
         } else if (cudaActive.type === &quot;mac&quot;) {
-          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;4 row threads → col ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;k = ${cudaK}&lt;/span&gt;`;
+          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;each thread → its own row, j = ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;k = ${cudaK}&lt;/span&gt;`;
           setCodeActive(&quot;cuda-code&quot;, [&quot;cuda-col&quot;, &quot;cuda-k&quot;, &quot;cuda-mac&quot;]);
         } else {
-          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;4 row threads → col ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;store&lt;/span&gt;`;
+          byId(&quot;cuda-status&quot;).innerHTML = `&lt;span&gt;each thread → its own row, j = ${cudaCol}&lt;/span&gt;&lt;span class=&quot;phase&quot;&gt;store&lt;/span&gt;`;
           setCodeActive(&quot;cuda-code&quot;, [&quot;cuda-col&quot;, &quot;cuda-store&quot;]);
         }
 
         if (!hasSelection) {
           byId(&quot;cuda-formula&quot;).innerHTML = &#x27;&lt;strong&gt;No thread selected&lt;/strong&gt;&lt;span&gt;Select a thread to inspect its private row work. Select it again to clear the inspection.&lt;/span&gt;&#x27;;
         } else if (step === 0) {
-          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;Selected ${selectedIdentity} → owns output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Every blue output cell belongs to this thread.&lt;/span&gt;`;
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;Selected ${selectedIdentity} → owns output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Every cell in its coloured output row belongs to this thread.&lt;/span&gt;`;
         } else if (cudaCount &gt;= cudaOps.length &amp;&amp; step &gt; cudaOps.length) {
-          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity} finished output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Its green dot means complete; its blue outline means selected.&lt;/span&gt;`;
+          byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity} finished output row ${inspectionRow}&lt;/strong&gt;&lt;span&gt;Its green dot means complete; its coloured outline means selected.&lt;/span&gt;`;
         } else if (cudaActive.type === &quot;mac&quot;) {
           const product = matrixM[inspectionRow][cudaK] * matrixN[cudaK][cudaCol];
           byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity}, row ${inspectionRow}: sum += ${matrixM[inspectionRow][cudaK]} × ${matrixN[cudaK][cudaCol]}&lt;/strong&gt;&lt;span&gt;product ${product} · private accumulator ${cudaState.sums[inspectionRow][cudaCol]}&lt;/span&gt;`;
@@ -1977,12 +2222,27 @@ html&gt;body{padding:0}&lt;/style&gt;
           byId(&quot;cuda-formula&quot;).innerHTML = `&lt;strong&gt;${selectedIdentity}, row ${inspectionRow}: out[${inspectionRow},${cudaCol}] = ${cudaState.output[inspectionRow][cudaCol]}&lt;/strong&gt;&lt;span&gt;all four threads store their own row element.&lt;/span&gt;`;
         }
 
-        renderCudaBlocks(cudaCount);
+        const cudaRunning = cudaCount &gt; 0 &amp;&amp; cudaCount &lt; cudaOps.length;
+        if (step === 0) {
+          byId(&quot;round-work-title&quot;).textContent = &quot;Before launch&quot;;
+          byId(&quot;round-work-body&quot;).textContent = &quot;4 threads exist. Each already knows its row from its coordinates. No output yet.&quot;;
+        } else if (!cudaRunning) {
+          byId(&quot;round-work-title&quot;).textContent = &quot;Done&quot;;
+          byId(&quot;round-work-body&quot;).textContent = &quot;Every thread finished all 3 elements of its own row.&quot;;
+        } else if (cudaActive.type === &quot;mac&quot;) {
+          byId(&quot;round-work-title&quot;).textContent = `This round · j = ${cudaCol}, k = ${cudaK}`;
+          byId(&quot;round-work-body&quot;).textContent = `All 4 threads add one product into their own out[row, ${cudaCol}] accumulator. Same j, different rows.`;
+        } else {
+          byId(&quot;round-work-title&quot;).textContent = `This round · store j = ${cudaCol}`;
+          byId(&quot;round-work-body&quot;).textContent = `4 threads × 1 element = 4 new cells, one per row. Next round each thread moves to j = ${cudaCol + 1 &lt; cols ? cudaCol + 1 : &quot;done&quot;} of the same row.`;
+        }
+
+        renderCudaBlocks(cudaCount, cudaState, cudaActive);
         byId(&quot;cuda-m-name&quot;).textContent = hasSelection ? `M row ${inspectionRow}` : &quot;M row —&quot;;
         byId(&quot;cuda-n-name&quot;).textContent = hasSelection ? `N column ${cudaCol}` : &quot;N column —&quot;;
         renderVector(byId(&quot;cuda-m-vector&quot;), hasSelection ? matrixM[inspectionRow] : Array(inner).fill(&quot;·&quot;), hasSelection ? cudaK : -1);
         renderVector(byId(&quot;cuda-n-vector&quot;), hasSelection ? matrixN.map((row) =&gt; row[cudaCol]) : Array(inner).fill(&quot;·&quot;), hasSelection ? cudaK : -1);
-        renderOutput(byId(&quot;cuda-output&quot;), cudaState.output, hasSelection &amp;&amp; cudaActive ? { row: inspectionRow, col: cudaCol } : null, hasSelection ? inspectionRow : null);
+        renderOutput(byId(&quot;cuda-output&quot;), cudaState.output, null, hasSelection ? inspectionRow : null, { col: cudaRunning ? cudaCol : null });
 
         if (window.lucide) window.lucide.createIcons({ attrs: { &quot;stroke-width&quot;: 1.8 } });
       }
