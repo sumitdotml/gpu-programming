@@ -19,37 +19,37 @@
 #include <stdlib.h>
 
 static void checkCuda(cudaError_t result, const char *operation);
-__global__ void MatMulKernel(const float *M_d, const float *N_d, float *out_d, size_t row_M, size_t col_M, size_t col_N);
-void matmul(const float *M_h, const float *N_h, float *out_h, size_t row_M, size_t col_M, size_t col_N);
+__global__ void MatMulKernel(const float *M_d, const float *N_d, float *out_d, size_t num_rows, size_t num_inner, size_t num_cols);
+void matmul(const float *M_h, const float *N_h, float *out_h, size_t num_rows, size_t num_inner, size_t num_cols);
 
 int main(void) {
   printGpuInfo();
 
-  size_t row_M = 5;
-  size_t col_M = 3;
-  size_t col_N = 4;
+  size_t num_rows = 5;
+  size_t num_inner = 3;
+  size_t num_cols = 4;
 
-  float *M_h = (float *)malloc(sizeof(float) * row_M * col_M);
-  float *N_h = (float *)malloc(col_M * col_N * sizeof(float));
-  float *out_h = (float *)malloc(row_M * col_N * sizeof(float));
+  float *M_h = (float *)malloc(sizeof(float) * num_rows * num_inner);
+  float *N_h = (float *)malloc(num_inner * num_cols * sizeof(float));
+  float *out_h = (float *)malloc(num_rows * num_cols * sizeof(float));
 
   // filling with dummies
-  for (size_t i = 0; i < row_M; ++i) {
-    for (size_t j = 0; j < col_M; ++j) {
-      M_h[i * col_M + j] = i + j + 2;
+  for (size_t i = 0; i < num_rows; ++i) {
+    for (size_t j = 0; j < num_inner; ++j) {
+      M_h[i * num_inner + j] = i + j + 2;
     }
   }
-  for (size_t i = 0; i < col_M; ++i) {
-    for (size_t j = 0; j < col_N; ++j) {
-      N_h[i * col_N + j] = i + j + 3;
+  for (size_t i = 0; i < num_inner; ++i) {
+    for (size_t j = 0; j < num_cols; ++j) {
+      N_h[i * num_cols + j] = i + j + 3;
     }
   }
 
-  matmul(M_h, N_h, out_h, row_M, col_M, col_N);
+  matmul(M_h, N_h, out_h, num_rows, num_inner, num_cols);
   printf("\nPrinting the output matrix:\n");
-  for (size_t i = 0; i < row_M; ++i) {
-    for (size_t j = 0; j < col_N; ++j) {
-      printf("%f ", out_h[col_N * i + j]);
+  for (size_t i = 0; i < num_rows; ++i) {
+    for (size_t j = 0; j < num_cols; ++j) {
+      printf("%f ", out_h[num_cols * i + j]);
     }
     printf("\n");
   }
@@ -61,35 +61,40 @@ int main(void) {
 }
 
 /*
-  1. Calculate the thread’s global row index i.
-  2. Guard against i being outside the output matrix.
-  3. Visit every output column j.
-  4. For each j, initialize a fresh accumulator.
+  Shapes:
+    M   is num_rows  x num_inner
+    N   is num_inner x num_cols
+    out is num_rows  x num_cols
+
+  1. Calculate the thread’s global row index row.
+  2. Guard against row being outside the output matrix.
+  3. Visit every output column.
+  4. For each column, initialize a fresh accumulator.
   5. Walk through shared index k and accumulate the dot product.
-  6. Store the result at output position [i][j].
+  6. Store the result at output position [row][col].
 */
 
-__global__ void MatMulKernel(const float *M_d, const float *N_d, float *out_d, size_t row_M, size_t col_M, size_t col_N) {
+__global__ void MatMulKernel(const float *M_d, const float *N_d, float *out_d, size_t num_rows, size_t num_inner, size_t num_cols) {
   size_t row = blockDim.y * blockIdx.y + threadIdx.y;
 
-  if (row < row_M) {
-    for (size_t j = 0; j < col_N; ++j) {
+  if (row < num_rows) {
+    for (size_t col = 0; col < num_cols; ++col) {
       float accumulator = 0.0f;
-      for (size_t k = 0; k < col_M; ++k) {
-        // offset + k for M_d, offset + j for N_d
-        accumulator += M_d[row * col_M + k] * N_d[k * col_N + j];
+      for (size_t k = 0; k < num_inner; ++k) {
+        // offset + k for M_d, offset + col for N_d
+        accumulator += M_d[row * num_inner + k] * N_d[k * num_cols + col];
       }
-      out_d[row * col_N + j] = accumulator;
+      out_d[row * num_cols + col] = accumulator;
     }
   }
 }
 
-void matmul(const float *M_h, const float *N_h, float *out_h, size_t row_M, size_t col_M, size_t col_N) {
+void matmul(const float *M_h, const float *N_h, float *out_h, size_t num_rows, size_t num_inner, size_t num_cols) {
   const size_t row_threads_per_block = 4;
-  const size_t row_block_count = (row_M + row_threads_per_block - 1) / row_threads_per_block;
-  const size_t M_bytes = row_M * col_M * sizeof(float);
-  const size_t N_bytes = col_M * col_N * sizeof(float);
-  const size_t out_bytes = row_M * col_N * sizeof(float);
+  const size_t row_block_count = (num_rows + row_threads_per_block - 1) / row_threads_per_block;
+  const size_t M_bytes = num_rows * num_inner * sizeof(float);
+  const size_t N_bytes = num_inner * num_cols * sizeof(float);
+  const size_t out_bytes = num_rows * num_cols * sizeof(float);
   float *M_d, *N_d, *out_d;
   checkCuda(cudaMalloc((void **)&M_d, M_bytes), "allocating M on the device");
   checkCuda(cudaMalloc((void **)&N_d, N_bytes), "allocating N on the device");
@@ -101,7 +106,7 @@ void matmul(const float *M_h, const float *N_h, float *out_h, size_t row_M, size
   checkCuda(cudaMemcpy(M_d, M_h, M_bytes, cudaMemcpyHostToDevice), "copying M to the device");
   checkCuda(cudaMemcpy(N_d, N_h, N_bytes, cudaMemcpyHostToDevice), "copying N to the device");
 
-  MatMulKernel<<<dimGrid, dimBlock>>>(M_d, N_d, out_d, row_M, col_M, col_N);
+  MatMulKernel<<<dimGrid, dimBlock>>>(M_d, N_d, out_d, num_rows, num_inner, num_cols);
   checkCuda(cudaGetLastError(), "launching MatMulKernel");
 
   checkCuda(cudaMemcpy(out_h, out_d, out_bytes, cudaMemcpyDeviceToHost), "copying the output to the host");
