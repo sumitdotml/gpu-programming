@@ -78,3 +78,31 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:tutor_harness.md:69
+
+### MISTAKE-20260923-001
+- id: MISTAKE-20260923-001
+- status: active
+- severity: medium
+- scope_tags: [learning, tutoring]
+- pattern: exercise question was built on an unverified premise about code structure (claimed one k-loop index expression changes between the row and column matmul kernels, when both keep the same flat form and only the source of i and j changes)
+- prevention_rule: before posing a comparison question about how code changes between two exercise variants, privately derive both variants and confirm the premise holds
+- validation_check: every "which part stays the same / which changes" question is checked against a private derivation of both versions before sending
+- first_seen: 2026-09-23
+- last_seen: 2026-09-23
+- occurrence_count: 1
+- evidence:
+  - file:pmpp/matmul_thread_per_row.cu:85
+
+### MISTAKE-20260923-002
+- id: MISTAKE-20260923-002
+- status: active
+- severity: medium
+- scope_tags: [tooling, docs]
+- pattern: recommended a shell command for the user to run without testing it on their platform (macOS BSD sed with GNU-only \b word boundaries, which silently matches nothing)
+- prevention_rule: before handing the user a file-editing shell command, run it against a scratch copy on the same machine and confirm the diff
+- validation_check: any suggested in-place edit command has been executed on a scratch copy in this session and produced the expected change
+- first_seen: 2026-09-23
+- last_seen: 2026-09-23
+- occurrence_count: 1
+- evidence:
+  - file:pmpp/matmul_thread_per_col.cu:11
