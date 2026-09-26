@@ -106,3 +106,34 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:pmpp/matmul_thread_per_col.cu:11
+
+### MISTAKE-20260926-001
+- id: MISTAKE-20260926-001
+- status: active
+- severity: low
+- scope_tags: [docs, learning]
+- pattern: first draft of a hand-built interactive SVG learning artifact shipped layout and interaction defects (click target covered by later-drawn siblings; rotated kernel label overlapping block captions) that were only caught by rendering and driving the page
+- prevention_rule: before reporting an interactive HTML artifact as done, render every step in a real browser at desktop and phone widths, in light and dark, and drive the controls with real input events
+- validation_check: a scripted headless-browser run clicks each control, reports no console errors, no horizontal overflow at 390px, and screenshots of each state show no overlapping text
+- first_seen: 2026-09-26
+- last_seen: 2026-09-26
+- occurrence_count: 1
+- evidence:
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:361
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:414
+
+### MISTAKE-20260926-002
+- id: MISTAKE-20260926-002
+- status: active
+- severity: medium
+- scope_tags: [docs, learning]
+- pattern: teaching artifact used overbroad or ambiguous wording for pointer location, copy semantics, and matrix indexing
+- prevention_rule: compare each teaching claim with the specific host function, kernel indexing, and CUDA API behavior before publishing; avoid universal claims and wording that implies elementwise matmul or movement instead of copying
+- validation_check: artifact descriptions identify &M_d as host-side only in matmul(), say cudaMemcpy copies values, and describe M and N accesses without implying matching indices
+- first_seen: 2026-09-26
+- last_seen: 2026-09-26
+- occurrence_count: 1
+- evidence:
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:221
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:253
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:259

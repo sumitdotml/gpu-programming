@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Where M_h and M_d Point</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --ink: #17202b;
+    --muted: #5a6572;
+    --line: #d6dce4;
+    --code-bg: #eef1f5;
+    --host: #1f56b5;
+    --host-bg: #eaf1fd;
+    --host-line: #a9c1ea;
+    --dev: #2f7a12;
+    --dev-bg: #ecf6e4;
+    --dev-line: #aed197;
+    --flow: #7a3fc4;
+    --changed: #c27a00;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #11151b; --panel: #19202a; --ink: #e5eaf1; --muted: #9aa5b3; --line: #2d3643; --code-bg: #1f2630;
+      --host: #82acff; --host-bg: #152238; --host-line: #34528a;
+      --dev: #8fd162; --dev-bg: #15271a; --dev-line: #386430;
+      --flow: #bb98ff; --changed: #f0ad3c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #11151b; --panel: #19202a; --ink: #e5eaf1; --muted: #9aa5b3; --line: #2d3643; --code-bg: #1f2630;
+    --host: #82acff; --host-bg: #152238; --host-line: #34528a;
+    --dev: #8fd162; --dev-bg: #15271a; --dev-line: #386430;
+    --flow: #bb98ff; --changed: #f0ad3c;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+  .wrap { max-width: 1200px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 20px; }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+  .host-t { color: var(--host); }
+  .dev-t { color: var(--dev); }
+
+  header { display: grid; gap: 8px; max-width: 72ch; }
+  .eyebrow { margin: 0; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  h1 { margin: 0; font-size: clamp(26px, 3.6vw, 38px); line-height: 1.15; font-weight: 700; letter-spacing: -.015em; text-wrap: balance; }
+  h1 code { font-size: .9em; font-weight: 600; }
+  .lede { margin: 0; color: var(--muted); font-size: 16px; }
+
+  /* Step controls */
+  .stepper { display: grid; gap: 10px; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .steps button { width: 100%; height: 100%; display: flex; gap: 8px; align-items: flex-start; padding: 9px 10px; text-align: left; font: 500 13px/1.3 var(--sans); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .steps button .n { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--code-bg); font-weight: 700; font-size: 12px; }
+  .steps button[aria-current="step"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .steps button[aria-current="step"] .n { background: var(--bg); color: var(--ink); }
+  button:focus-visible { outline: 3px solid var(--flow); outline-offset: 2px; }
+  .nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .nav button { white-space: nowrap; font: 600 13px var(--sans); padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .nav button:disabled { opacity: .4; cursor: default; }
+  .nav .hint { color: var(--muted); font-size: 12px; }
+
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+  .stage h2 { margin: 0; font-size: 18px; line-height: 1.3; text-wrap: balance; }
+  .stage pre { margin: 0; padding: 10px 12px; background: var(--code-bg); border-radius: 6px; overflow-x: auto; font: 13px/1.5 var(--mono); }
+  .stage p { margin: 0; max-width: 78ch; }
+
+  /* Figure + inspector */
+  .main { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr) 360px; } }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+  #diagram { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: 13px; }
+  .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .legend svg { flex: none; }
+
+  /* SVG styling */
+  .p-host { fill: var(--host-bg); stroke: var(--host-line); stroke-width: 1.5; }
+  .p-dev { fill: var(--dev-bg); stroke: var(--dev-line); stroke-width: 1.5; }
+  .hdr { font: 700 12px var(--sans); letter-spacing: .08em; }
+  .sub { font: 500 10.5px var(--sans); fill: var(--muted); }
+  .cap { font: 500 10px var(--sans); fill: var(--muted); }
+  .addr { font: 600 11px var(--mono); }
+  .fill-host, .host-c { fill: var(--host); }
+  .fill-dev, .dev-c { fill: var(--dev); }
+  .fill-flow, .flow-c { fill: var(--flow); }
+  .flow-c { font: 600 10.5px var(--mono); }
+  .cell { fill: var(--panel); stroke-width: 1; }
+  .cell.h { stroke: var(--host-line); }
+  .cell.d { stroke: var(--dev-line); }
+  .blk.h { fill: none; stroke: var(--host); stroke-width: 1.5; }
+  .blk.d { fill: none; stroke: var(--dev); stroke-width: 1.5; }
+  .idx { font: 9px var(--mono); fill: var(--muted); }
+  .val { font: 600 13px var(--mono); fill: var(--ink); }
+  .unk { font: 600 13px var(--mono); fill: var(--muted); }
+  .ph { fill: none; stroke: var(--dev-line); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .ph-t { font: 500 10px var(--sans); fill: var(--muted); }
+  .tab { fill: var(--host-bg); stroke: var(--host); stroke-width: 1; }
+  .tab-t { font: 600 10.5px var(--mono); }
+  .amp { fill: var(--ink); }
+  .pbox { fill: var(--panel); stroke: var(--host); stroke-width: 1.5; }
+  .pdiv { stroke: var(--host-line); stroke-width: 1; }
+  .pname { font: 700 12px var(--mono); fill: var(--ink); }
+  .pval { font: 600 12px var(--mono); }
+  .parr { fill: none; stroke-width: 1.6; }
+  .parr.host-s { stroke: var(--host); }
+  .parr.dev-s { stroke: var(--dev); }
+  .dot.host-s { fill: var(--host); }
+  .dot.dev-s { fill: var(--dev); }
+  .dim { opacity: .4; }
+  .flow { fill: none; stroke: var(--flow); stroke-width: 3; stroke-dasharray: 7 5; animation: march 0.9s linear infinite; }
+  @keyframes march { to { stroke-dashoffset: -12; } }
+  @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+  .chg { fill: none; stroke: var(--changed); stroke-width: 2.5; }
+  .badge circle { fill: var(--ink); }
+  .badge text { fill: var(--bg); font: 700 10px var(--sans); }
+  .band-hit { fill: transparent; cursor: pointer; }
+
+  /* Inspector */
+  .inspect { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 12px; }
+  .inspect h2 { margin: 0; font-size: 16px; }
+  .inspect > p { margin: 0; color: var(--muted); font-size: 13px; }
+  .picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .picker button { font: 600 13px var(--mono); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .picker button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .pair { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 640px) and (max-width: 1099px) { .pair { grid-template-columns: 1fr 1fr; } }
+  .col { border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; }
+  .col.host { background: var(--host-bg); border: 1px solid var(--host-line); }
+  .col.dev { background: var(--dev-bg); border: 1px solid var(--dev-line); }
+  .col h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; align-items: baseline; }
+  .row .b { grid-row: span 2; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg); font: 700 11px var(--sans); }
+  .row .ev { font-family: var(--mono); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .row .ev .e { font-weight: 600; }
+  .row .ev .eq { color: var(--muted); }
+  .row .ev .v { font-weight: 600; }
+  .row .ev .v.unk-t { color: var(--muted); }
+  .row .why { font-size: 12.5px; color: var(--muted); }
+  .row .why b { color: var(--ink); font-weight: 600; }
+  .check { margin: 0; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+
+  .notes { display: grid; gap: 8px; max-width: 80ch; }
+  .notes h2 { margin: 0; font-size: 16px; }
+  .notes ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
+  .notes li b { color: var(--ink); font-weight: 600; }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 720px) {
+    .steps { grid-template-columns: 1fr; }
+    .steps button { padding: 7px 10px; }
+    .wrap { padding-inline: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">PMPP ch. 3 · 2×2 matmul · host and device memory</p>
+    <h1>Where <code class="host-t">M_h</code> and <code class="dev-t">M_d</code> point</h1>
+    <p class="lede">A pointer is a small variable that lives in one place and stores the address of something else. Step through a 2×2 matmul and watch three separate things for each pointer: where the variable lives, the address it stores, and the float at that address.</p>
+  </header>
+
+  <section class="stepper" aria-label="Walkthrough steps">
+    <ol class="steps" id="steps"></ol>
+    <div class="nav">
+      <button type="button" id="prev">← Back</button>
+      <button type="button" id="next">Next →</button>
+      <span class="hint">Arrow keys also move between steps.</span>
+    </div>
+  </section>
+
+  <section class="stage" aria-live="polite">
+    <h2 id="stage-title"></h2>
+    <pre id="stage-code"></pre>
+    <p id="stage-text"></p>
+  </section>
+
+  <div class="main">
+    <figure>
+      <svg id="diagram" role="img" aria-labelledby="diagram-label" xmlns="http://www.w3.org/2000/svg"></svg>
+      <p id="diagram-label" class="sr"></p>
+      <ul class="legend" aria-label="Legend">
+        <li><svg width="44" height="30" viewBox="0 0 44 30" aria-hidden="true"><rect x="1" y="1" width="30" height="10" class="tab"/><rect x="1" y="11" width="42" height="17" class="pbox"/></svg><span>Tab = the variable's own address (<code>&amp;p</code>). Inside the box = the address it stores (<code>p</code>).</span></li>
+        <li><svg width="30" height="12" viewBox="0 0 30 12" aria-hidden="true"><line x1="2" y1="6" x2="22" y2="6" class="parr host-s"/><path d="M20,2 L28,6 L20,10 z" class="fill-host"/></svg><svg width="30" height="12" viewBox="0 0 30 12" aria-hidden="true"><line x1="2" y1="6" x2="22" y2="6" class="parr dev-s"/><path d="M20,2 L28,6 L20,10 z" class="fill-dev"/></svg><span>Stored address → the float it points to (colored by where that float lives)</span></li>
+        <li><svg width="34" height="12" viewBox="0 0 34 12" aria-hidden="true"><line x1="2" y1="6" x2="32" y2="6" stroke="var(--flow)" stroke-width="3" stroke-dasharray="7 5"/></svg><span>Floats copied or computed in this step</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" class="chg"/></svg><span>Changed in this step</span></li>
+        <li><span><code>?</code> = garbage: allocated or declared, never written</span></li>
+      </ul>
+      <figcaption>Addresses are made-up examples chosen to be short. Real ones are 64-bit and change every run. Blocks are drawn as flat memory, <code>[0]</code> to <code>[3]</code>, in row-major order.</figcaption>
+    </figure>
+
+    <section class="inspect" aria-labelledby="inspect-h">
+      <h2 id="inspect-h">Read one pointer pair</h2>
+      <p>Pick a matrix. The numbers ①②③ match the badges in the diagram.</p>
+      <div class="picker" role="group" aria-label="Matrix">
+        <button type="button" data-m="M" aria-pressed="true">M</button>
+        <button type="button" data-m="N" aria-pressed="false">N</button>
+        <button type="button" data-m="out" aria-pressed="false">out</button>
+      </div>
+      <div class="pair" id="pair"></div>
+      <p class="check" id="check"></p>
+    </section>
+  </div>
+
+  <section class="notes">
+    <h2>What the picture is careful about</h2>
+    <ul>
+      <li><b><code>cudaMalloc</code> copies no floats.</b> It reserves GPU bytes and writes one address into <code>M_d</code>. The GPU block holds garbage until <code>cudaMemcpy</code> or a kernel writes it.</li>
+      <li><b><code>&amp;M_d</code> is a host address in this <code>matmul()</code> function.</b> The kernel launch passes the <em>value</em> of <code>M_d</code>. In your <code>MatMulKernel</code> the parameter is also named <code>M_d</code>, but it is a separate variable that holds a copy of that GPU address.</li>
+      <li><b>Host code cannot follow a GPU address.</b> Reading <code>M_d[0]</code> in ordinary host code is invalid. To see GPU floats on the CPU, copy them back into a host block first.</li>
+      <li><b>Your file has two <code>M_h</code> variables.</b> In <code>matmul_thread_per_col.cu</code>, <code>main()</code> stores the address returned by <code>malloc</code> and passes that value to <code>matmul()</code>. Its parameter <code>M_h</code> is a second host variable with a different <code>&amp;</code> address that holds the same heap address. The diagram draws <code>matmul()</code>'s frame, where <code>M_d</code> is declared too.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  const MATS = [
+    { key: 'M',   h: 'M_h',   d: 'M_d',   hVar: '0x7ffd48', dVar: '0x7ffd20', heap: '0x55a2a0', gpu: '0xb00000', vals: [1, 2, 3, 4] },
+    { key: 'N',   h: 'N_h',   d: 'N_d',   hVar: '0x7ffd40', dVar: '0x7ffd18', heap: '0x55a2c0', gpu: '0xb00200', vals: [5, 6, 7, 8] },
+    { key: 'out', h: 'out_h', d: 'out_d', hVar: '0x7ffd38', dVar: '0x7ffd10', heap: '0x55a2e0', gpu: '0xb00400', vals: [19, 22, 43, 50] }
+  ];
+
+  const STEPS = [
+    {
+      short: 'Host blocks',
+      title: 'malloc host blocks and fill M and N',
+      code: 'float *M_h = (float *)malloc(4 * sizeof(float));   // same for N_h, out_h\n// M_h[0..3] = 1, 2, 3, 4      N_h[0..3] = 5, 6, 7, 8\nfloat *M_d, *N_d, *out_d;                           // declared, not set yet',
+      text: 'Each malloc returns the start address of a new 16-byte block, and that address is stored in a pointer variable on the host stack. M_h is the 8-byte variable in the middle column; the four floats live in the separate block on the left. The out block exists but has never been written. M_d, N_d and out_d already exist on the host stack too, holding garbage.'
+    },
+    {
+      short: 'cudaMalloc',
+      title: 'cudaMalloc writes GPU addresses into host variables',
+      code: 'cudaMalloc((void **)&M_d, 4 * sizeof(float));      // same for N_d, out_d',
+      text: 'cudaMalloc needs to change M_d, so it receives M_d\'s own address, &M_d = 0x7ffd20, which is a host stack address. It reserves 16 bytes of GPU memory and writes the start of that block, 0xb00000, into M_d. It copies no floats: the new GPU blocks hold garbage.'
+    },
+    {
+      short: 'Copy M, N →',
+      title: 'cudaMemcpy copies M and N to the GPU',
+      code: 'cudaMemcpy(M_d, M_h, 4 * sizeof(float), cudaMemcpyHostToDevice);\ncudaMemcpy(N_d, N_h, 4 * sizeof(float), cudaMemcpyHostToDevice);',
+      text: 'cudaMemcpy receives the stored addresses: copy 16 bytes from host 0x55a2a0 to device 0xb00000. The float values are copied. The pointer variables stay where they are and keep the same values. Host and GPU now each hold their own copy of M and of N.'
+    },
+    {
+      short: 'Kernel',
+      title: 'The kernel reads M and N and writes out on the GPU',
+      code: 'MatMulKernel<<<grid, block>>>(M_d, N_d, out_d, 2, 2, 2);',
+      text: 'The launch copies the values of M_d, N_d and out_d, three GPU addresses, into the kernel\'s parameters. &M_d stays on the host and the kernel never sees it. For each output cell, GPU threads choose M_d elements by row and dot-product position, and N_d elements by dot-product position and column. They write the four results into the out block: 19, 22, 43, 50. For example out[0] = 1×5 + 2×7 = 19. The host out block is still garbage.'
+    },
+    {
+      short: '← Copy out',
+      title: 'cudaMemcpy copies out back to the host',
+      code: 'cudaMemcpy(out_h, out_d, 4 * sizeof(float), cudaMemcpyDeviceToHost);',
+      text: 'Destination comes first: copy 16 bytes from device 0xb00400 to host 0x55a2e0. Host code can now read out_h[0] and get 19. It still cannot read out_d[0]. The GPU block keeps its own copy until cudaFree.'
+    }
+  ];
+
+  // State of each matrix at step s (1-based). null means garbage ("?").
+  const heapCells = (m, s) => (m.key !== 'out' || s >= 5) ? m.vals : null;
+  const devAllocated = s => s >= 2;
+  const devCells = (m, s) => {
+    if (s < 2) return undefined;
+    if (m.key === 'out') return s >= 4 ? m.vals : null;
+    return s >= 3 ? m.vals : null;
+  };
+  const devPtr = (m, s) => s >= 2 ? m.gpu : null;
+  const changed = (m, s) => ({
+    1: { heap: true, hval: true },
+    2: { dev: true, dval: true },
+    3: m.key !== 'out' ? { dev: true } : {},
+    4: m.key === 'out' ? { dev: true } : {},
+    5: m.key === 'out' ? { heap: true } : {}
+  })[s];
+
+  const LAYOUTS = {
+    wide:   { W: 760, host: [8, 470], dev: [490, 752], heapX: 56, cw: 84, sx: 252, sw: 192, nw: 58, tabW: 124, devX: 572, narrow: false },
+    narrow: { W: 380, host: [4, 238], dev: [248, 376], heapX: 26, cw: 60, sx: 104, sw: 126, nw: 46, tabW: 104, devX: 274, narrow: true }
+  };
+  const TOP = 50, BAND = 170, H = TOP + 3 * BAND;
+
+  let step = 1;
+  let selected = 'M';
+  let layoutName = 'wide';
+
+  const svg = document.getElementById('diagram');
+
+  function block(L, x, b, region, cells, addr, caption, isChanged) {
+    const r = region === 'host' ? 'h' : 'd';
+    let o = `<text x="${x}" y="${b + 10}" class="cap">${caption}</text>`;
+    o += `<text x="${x}" y="${b + 24}" class="addr ${region}-c">${addr}</text>`;
+    for (let k = 0; k < 4; k++) {
+      const y = b + 30 + k * 24;
+      const v = cells ? cells[k] : '?';
+      o += `<rect x="${x}" y="${y}" width="${L.cw}" height="24" class="cell ${r}"/>`;
+      o += `<text x="${x + 5}" y="${y + 15}" class="idx">[${k}]</text>`;
+      o += `<text x="${x + L.cw / 2 + 8}" y="${y + 17}" text-anchor="middle" class="${cells ? 'val' : 'unk'}">${v}</text>`;
+    }
+    o += `<rect x="${x}" y="${b + 30}" width="${L.cw}" height="96" class="blk ${r}"/>`;
+    if (isChanged) o += `<rect x="${x - 3}" y="${b + 27}" width="${L.cw + 6}" height="102" rx="3" class="chg"/>`;
+    return o;
+  }
+
+  function pointer(L, y, name, varAddr, value, target, isChanged) {
+    const x = L.sx;
+    let o = `<rect x="${x}" y="${y - 16}" width="${L.tabW}" height="16" rx="2" class="tab"/>`;
+    o += `<text x="${x + 6}" y="${y - 4.5}" class="tab-t"><tspan class="amp">&amp;${name}</tspan><tspan class="host-c">${L.narrow ? ' ' : ' = '}${varAddr}</tspan></text>`;
+    o += `<rect x="${x}" y="${y}" width="${L.sw}" height="30" class="pbox"/>`;
+    o += `<line x1="${x + L.nw}" y1="${y}" x2="${x + L.nw}" y2="${y + 30}" class="pdiv"/>`;
+    o += `<text x="${x + 7}" y="${y + 19.5}" class="pname">${name}</text>`;
+    if (value) {
+      o += `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="pval ${target}-c">${value}</text>`;
+    } else {
+      o += `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="unk">?${L.narrow ? '' : '  (garbage)'}</text>`;
+    }
+    if (isChanged) o += `<rect x="${x + L.nw + 2}" y="${y + 2}" width="${L.sw - L.nw - 4}" height="26" rx="2" class="chg"/>`;
+    return o;
+  }
+
+  function badge(x, y, n) {
+    return `<g class="badge" aria-hidden="true"><circle cx="${x}" cy="${y}" r="8"/><text x="${x}" y="${y + 3.5}" text-anchor="middle">${n}</text></g>`;
+  }
+
+  function renderDiagram() {
+    const L = LAYOUTS[layoutName];
+    const s = step;
+    svg.setAttribute('viewBox', `0 0 ${L.W} ${H}`);
+    let o = `<defs>
+      <marker id="ah-host" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-host"/></marker>
+      <marker id="ah-dev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-dev"/></marker>
+      <marker id="ah-flow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-flow"/></marker>
+    </defs>`;
+
+    // Memory regions
+    o += `<rect x="${L.host[0]}" y="4" width="${L.host[1] - L.host[0]}" height="${H - 8}" rx="10" class="p-host"/>`;
+    o += `<rect x="${L.dev[0]}" y="4" width="${L.dev[1] - L.dev[0]}" height="${H - 8}" rx="10" class="p-dev"/>`;
+    o += `<text x="${L.host[0] + 12}" y="22" class="hdr host-c">${L.narrow ? 'HOST · CPU' : 'HOST · CPU memory'}</text>`;
+    o += `<text x="${L.dev[0] + 12}" y="22" class="hdr dev-c">${L.narrow ? 'DEVICE · GPU' : 'DEVICE · GPU memory'}</text>`;
+    o += `<text x="${L.heapX}" y="40" class="sub">${L.narrow ? 'heap' : 'heap blocks (malloc)'}</text>`;
+    o += `<text x="${L.sx}" y="40" class="sub">${L.narrow ? 'stack: pointers' : 'matmul() stack: pointer variables'}</text>`;
+    o += `<text x="${L.devX}" y="40" class="sub">${L.narrow ? 'global memory' : 'global memory (cudaMalloc)'}</text>`;
+
+    MATS.forEach((m, i) => {
+      const b = TOP + i * BAND;
+      const sel = m.key === selected;
+      const ch = changed(m, s);
+      const dp = devPtr(m, s);
+      const hc = L.heapX + L.cw / 2, dc = L.devX + L.cw / 2;
+
+      // Click target for the whole band (mouse convenience; buttons are the keyboard path)
+      o += `<g data-m="${m.key}">`;
+      o += `<rect x="${L.host[0]}" y="${b - 4}" width="${L.dev[1] - L.host[0]}" height="${BAND - 2}" class="band-hit"/>`;
+
+      o += block(L, L.heapX, b, 'host', heapCells(m, s), m.heap,
+        L.narrow ? `${m.key} · malloc` : `${m.key} · malloc, 16 B`, ch.heap);
+
+      if (devAllocated(s)) {
+        o += block(L, L.devX, b, 'dev', devCells(m, s), m.gpu,
+          L.narrow ? `${m.key} · cudaMalloc` : `${m.key} · cudaMalloc, 16 B`, ch.dev);
+      } else {
+        o += `<rect x="${L.devX}" y="${b + 30}" width="${L.cw}" height="96" rx="4" class="ph"/>`;
+        o += `<text x="${dc}" y="${b + 75}" text-anchor="middle" class="ph-t">not</text>`;
+        o += `<text x="${dc}" y="${b + 89}" text-anchor="middle" class="ph-t">allocated</text>`;
+      }
+
+      o += pointer(L, b + 42, m.h, m.hVar, m.heap, 'host', ch.hval);
+      o += pointer(L, b + 100, m.d, m.dVar, dp, 'dev', ch.dval);
+
+      // Pointer arrows: from the stored value to cell [0] of the block it names
+      const dim = sel ? '' : ' dim';
+      const hx = L.heapX + L.cw;
+      o += `<circle cx="${L.sx}" cy="${b + 57}" r="3" class="dot host-s${dim}"/>`;
+      o += `<path d="M${L.sx},${b + 57} C${L.sx - 18},${b + 57} ${hx + 18},${b + 42} ${hx + 3},${b + 42}" class="parr host-s${dim}" marker-end="url(#ah-host)"/>`;
+      if (dp) {
+        const x0 = L.sx + L.sw;
+        o += `<circle cx="${x0}" cy="${b + 115}" r="3" class="dot dev-s${dim}"/>`;
+        o += `<path d="M${x0},${b + 115} C${x0 + 30},${b + 115} ${L.devX - 30},${b + 42} ${L.devX - 3},${b + 42}" class="parr dev-s${dim}" marker-end="url(#ah-dev)"/>`;
+      }
+
+      // Copies along the lane under each band
+      const midX = L.sx + L.sw / 2;
+      if (s === 3 && m.key !== 'out') {
+        o += `<path d="M${hc},${b + 128} V${b + 146} H${dc} V${b + 132}" class="flow" marker-end="url(#ah-flow)"/>`;
+        o += `<text x="${midX}" y="${b + 161}" text-anchor="middle" class="flow-c">cudaMemcpy → 16 B</text>`;
+      }
+      if (s === 5 && m.key === 'out') {
+        o += `<path d="M${dc},${b + 128} V${b + 146} H${hc} V${b + 132}" class="flow" marker-end="url(#ah-flow)"/>`;
+        o += `<text x="${midX}" y="${b + 161}" text-anchor="middle" class="flow-c">← cudaMemcpy 16 B</text>`;
+      }
+
+      if (sel) {
+        o += badge(L.sx + L.tabW + 11, b + 34, 1);
+        o += badge(L.sx + L.sw - 16, b + 72, 2);
+        o += badge(L.heapX - 13, b + 42, 3);
+        o += badge(L.sx + L.tabW + 11, b + 92, 1);
+        o += badge(L.sx + L.sw - 16, b + 130, 2);
+        if (devAllocated(s)) o += badge(L.devX + L.cw + 14, b + 42, 3);
+      }
+      o += `</g>`;
+    });
+
+    // Kernel: reads the M and N blocks, writes the out block (all on the GPU)
+    if (s === 4) {
+      const re = L.devX + L.cw, kx = L.narrow ? re + 24 : re + 60;
+      const ym = TOP + 78, yn = TOP + BAND + 78, yo = TOP + 2 * BAND + 78;
+      o += `<path d="M${re},${ym} H${kx} V${yo} H${re + 5}" class="flow" marker-end="url(#ah-flow)"/>`;
+      o += `<path d="M${re},${yn} H${kx}" class="flow"/>`;
+      o += `<text transform="translate(${kx + 12},${(ym + yo) / 2}) rotate(90)" text-anchor="middle" class="flow-c">${L.narrow ? 'MatMulKernel' : 'MatMulKernel: reads M, N → writes out'}</text>`;
+    }
+
+    svg.innerHTML = o;
+    document.getElementById('diagram-label').textContent = describe();
+  }
+
+  function fmt(cells) { return cells ? cells.join(', ') : 'garbage'; }
+
+  function describe() {
+    const s = step;
+    const parts = MATS.map(m => {
+      const dp = devPtr(m, s);
+      let t = `${m.h} lives at host address ${m.hVar} and stores host address ${m.heap}; that host block holds ${fmt(heapCells(m, s))}. `;
+      t += `${m.d} lives at host address ${m.dVar} and stores ${dp ? 'device address ' + dp : 'garbage'}; `;
+      t += devAllocated(s) ? `the GPU block holds ${fmt(devCells(m, s))}.` : 'no GPU block is allocated yet.';
+      return t;
+    });
+    return `Memory diagram, step ${s}: ${STEPS[s - 1].title}. ` + parts.join(' ');
+  }
+
+  function row(n, expr, value, valueClass, alt, why) {
+    return `<div class="row"><span class="b" aria-label="${n}">${n}</span>
+      <div class="ev"><span class="e">${expr}</span>${alt ? `<span class="eq">${alt}</span>` : ''}<span class="eq">=</span><span class="v ${valueClass}">${value}</span></div>
+      <div class="why">${why}</div></div>`;
+  }
+
+  function renderInspector() {
+    const s = step;
+    const m = MATS.find(x => x.key === selected);
+    const hc = heapCells(m, s), dp = devPtr(m, s), dcells = devCells(m, s);
+    const f = v => v.toFixed(1) + 'f';
+
+    let host = `<article class="col host"><h3>Host pointer <code>${m.h}</code></h3>`;
+    host += row(1, `&amp;${m.h}`, m.hVar, 'host-t', '',
+      '<b>Where the pointer variable itself lives</b>: an 8-byte slot on the host stack.');
+    host += row(2, m.h, m.heap, 'host-t', '',
+      '<b>The address stored inside it</b>: the start of a separate host block.');
+    host += row(3, `${m.h}[0]`, hc ? f(hc[0]) : '?', hc ? '' : 'unk-t', `(same as *${m.h})`,
+      hc ? '<b>The first float in that block.</b> Host code can read it.'
+         : '<b>The first float in that block.</b> Allocated but never written, so it is garbage.');
+    host += `</article>`;
+
+    let dev = `<article class="col dev"><h3>Device pointer <code>${m.d}</code></h3>`;
+    dev += row(1, `&amp;${m.d}`, m.dVar, 'host-t', '',
+      '<b>Also a host stack address.</b> This is what you pass to <code>cudaMalloc</code> so it can write into ' + m.d + '.');
+    dev += dp
+      ? row(2, m.d, dp, 'dev-t', '', '<b>A GPU address</b>, stored in a host variable.')
+      : row(2, m.d, '?', 'unk-t', '', '<b>Declared but not set.</b> Garbage bits, not a usable address.');
+    if (!devAllocated(s)) {
+      dev += row(3, `${m.d}[0]`, 'nothing yet', 'unk-t', '',
+        'No GPU block exists yet, so there is nothing valid to read.');
+    } else {
+      const kv = dcells ? f(dcells[0]) : '?';
+      dev += row(3, `${m.d}[0]`, `in a kernel: ${kv}`, dcells ? '' : 'unk-t', '',
+        `<b>In a kernel</b>: the first float of the GPU block${dcells ? '' : ', still garbage'}. <b>In host code</b>: not allowed. Copy the floats into a host block with <code>cudaMemcpy</code> first.`);
+    }
+    dev += `</article>`;
+
+    document.getElementById('pair').innerHTML = host + dev;
+    document.getElementById('check').innerHTML =
+      `Check: ② for <code>${m.h}</code> equals the address printed above cell [0] of its host block. ① is a different address: the variable's own. ` +
+      (dp ? `<code>${m.d}</code> sits in blue host memory but stores a green GPU address.` : `<code>${m.d}</code> already has a host address before any GPU call runs.`);
+
+    document.querySelectorAll('.picker button').forEach(btn =>
+      btn.setAttribute('aria-pressed', String(btn.dataset.m === selected)));
+  }
+
+  function renderStage() {
+    const st = STEPS[step - 1];
+    document.getElementById('stage-title').textContent = `Step ${step} of 5 · ${st.title}`;
+    document.getElementById('stage-code').textContent = st.code;
+    document.getElementById('stage-text').textContent = st.text;
+    document.querySelectorAll('#steps button').forEach(btn => {
+      if (Number(btn.dataset.step) === step) btn.setAttribute('aria-current', 'step');
+      else btn.removeAttribute('aria-current');
+    });
+    document.getElementById('prev').disabled = step === 1;
+    document.getElementById('next').disabled = step === STEPS.length;
+  }
+
+  function render() { renderStage(); renderDiagram(); renderInspector(); }
+
+  function go(n) {
+    step = Math.min(STEPS.length, Math.max(1, n));
+    render();
+  }
+
+  // Build step buttons
+  const stepsEl = document.getElementById('steps');
+  stepsEl.innerHTML = STEPS.map((st, i) =>
+    `<li><button type="button" data-step="${i + 1}"><span class="n">${i + 1}</span><span>${st.short}</span></button></li>`).join('');
+  stepsEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-step]');
+    if (btn) go(Number(btn.dataset.step));
+  });
+  document.getElementById('prev').addEventListener('click', () => go(step - 1));
+  document.getElementById('next').addEventListener('click', () => go(step + 1));
+  document.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === 'ArrowRight') { go(step + 1); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { go(step - 1); e.preventDefault(); }
+  });
+
+  document.querySelector('.picker').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-m]');
+    if (btn) { selected = btn.dataset.m; renderDiagram(); renderInspector(); }
+  });
+  svg.addEventListener('click', e => {
+    const hit = e.target.closest('[data-m]');
+    if (hit) { selected = hit.getAttribute('data-m'); renderDiagram(); renderInspector(); }
+  });
+
+  // Pick the diagram geometry from the figure's width, not the window's
+  const fig = svg.parentElement;
+  function pickLayout() {
+    const next = fig.clientWidth < 600 ? 'narrow' : 'wide';
+    if (next !== layoutName) { layoutName = next; renderDiagram(); }
+  }
+  if ('ResizeObserver' in window) new ResizeObserver(pickLayout).observe(fig);
+  else window.addEventListener('resize', pickLayout);
+
+  layoutName = fig.clientWidth < 600 ? 'narrow' : 'wide';
+  render();
+})();
+</script>
+</body>
+</html>
