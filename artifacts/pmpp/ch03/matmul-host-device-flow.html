@@ -6,203 +6,246 @@
 <title>Where M_h and M_d Point</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap">
 <style>
+  /* Palette follows Modal's GPU Glossary: "Light" by default, "Terminal" in dark mode */
   :root {
-    --bg: #f4f6f8;
-    --panel: #ffffff;
-    --ink: #17202b;
-    --muted: #5a6572;
-    --line: #d6dce4;
-    --code-bg: #eef1f5;
-    --host: #1f56b5;
-    --host-bg: #eaf1fd;
-    --host-line: #a9c1ea;
-    --dev: #2f7a12;
-    --dev-bg: #ecf6e4;
-    --dev-line: #aed197;
-    --flow: #7a3fc4;
-    --changed: #c27a00;
-    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --bg: #e9e9e9;
+    --fg: #212525;
+    --muted: #585c5c;
+    --line: #b5b8b8;
+    --chip: #d5d6d6;
+    --accent: #212525;
+    --accent-fg: #e9e9e9;
+    --host: #1342ff;
+    --dev: #2c6b2b;
+    --flow: #b1259c;
+    --chg: #786823;
+    --chg-bg: #ebe09e;
+    --hatch: #8d9090;
+    --mono: "DM Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: #11151b; --panel: #19202a; --ink: #e5eaf1; --muted: #9aa5b3; --line: #2d3643; --code-bg: #1f2630;
-      --host: #82acff; --host-bg: #152238; --host-line: #34528a;
-      --dev: #8fd162; --dev-bg: #15271a; --dev-line: #386430;
-      --flow: #bb98ff; --changed: #f0ad3c;
+      --bg: #0d180a; --fg: #ddffdc; --muted: #a2bea0; --line: #2f4c28; --chip: #22401b;
+      --accent: #7fee64; --accent-fg: #0d180a;
+      --host: #47c2ff; --dev: #7fee64; --flow: #ff6ee0; --chg: #fffb2b; --chg-bg: #3a3a10; --hatch: #4c6947;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #11151b; --panel: #19202a; --ink: #e5eaf1; --muted: #9aa5b3; --line: #2d3643; --code-bg: #1f2630;
-    --host: #82acff; --host-bg: #152238; --host-line: #34528a;
-    --dev: #8fd162; --dev-bg: #15271a; --dev-line: #386430;
-    --flow: #bb98ff; --changed: #f0ad3c;
+    --bg: #0d180a; --fg: #ddffdc; --muted: #a2bea0; --line: #2f4c28; --chip: #22401b;
+    --accent: #7fee64; --accent-fg: #0d180a;
+    --host: #47c2ff; --dev: #7fee64; --flow: #ff6ee0; --chg: #fffb2b; --chg-bg: #3a3a10; --hatch: #4c6947;
   }
 
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
-  .wrap { max-width: 1200px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 20px; }
-  code, .mono { font-family: var(--mono); font-size: .92em; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 400 14.5px/1.65 var(--mono); }
+  code, .mono { font-family: var(--mono); }
+  code { background: var(--chip); padding: 0 4px; font-size: .95em; }
   .host-t { color: var(--host); }
   .dev-t { color: var(--dev); }
+  button { font-family: inherit; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .label { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
-  header { display: grid; gap: 8px; max-width: 72ch; }
-  .eyebrow { margin: 0; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
-  h1 { margin: 0; font-size: clamp(26px, 3.6vw, 38px); line-height: 1.15; font-weight: 700; letter-spacing: -.015em; text-wrap: balance; }
-  h1 code { font-size: .9em; font-weight: 600; }
-  .lede { margin: 0; color: var(--muted); font-size: 16px; }
+  /* One framed "terminal window", like the glossary */
+  .frame { max-width: 1360px; margin: 0 auto; border: 1px solid var(--line); }
 
-  /* Step controls */
-  .stepper { display: grid; gap: 10px; }
-  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-  .steps button { width: 100%; height: 100%; display: flex; gap: 8px; align-items: flex-start; padding: 9px 10px; text-align: left; font: 500 13px/1.3 var(--sans); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
-  .steps button .n { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--code-bg); font-weight: 700; font-size: 12px; }
-  .steps button[aria-current="step"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  .steps button[aria-current="step"] .n { background: var(--bg); color: var(--ink); }
-  button:focus-visible { outline: 3px solid var(--flow); outline-offset: 2px; }
-  .nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .nav button { white-space: nowrap; font: 600 13px var(--sans); padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
-  .nav button:disabled { opacity: .4; cursor: default; }
-  .nav .hint { color: var(--muted); font-size: 12px; }
+  .top { padding: 22px 24px 20px; display: grid; gap: 8px; }
+  h1 { margin: 0; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.2; font-weight: 400; letter-spacing: .04em; color: var(--accent); text-wrap: balance; }
+  h1 code { background: none; padding: 0; }
+  .lede { margin: 0; max-width: 78ch; color: var(--muted); }
 
-  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
-  .stage h2 { margin: 0; font-size: 18px; line-height: 1.3; text-wrap: balance; }
-  .stage pre { margin: 0; padding: 10px 12px; background: var(--code-bg); border-radius: 6px; overflow-x: auto; font: 13px/1.5 var(--mono); }
-  .stage p { margin: 0; max-width: 78ch; }
+  /* Timeline: steps as a segmented bar; the current step is an inverted cell, like the glossary's selected entry */
+  .timeline { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); border-block: 1px solid var(--line); padding: 10px 24px; }
+  .tl-row { display: flex; align-items: stretch; gap: 12px; }
+  .play { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg); background: transparent; border: 1px solid var(--fg); cursor: pointer; }
+  .play:hover { background: var(--chip); }
+  .play[data-mode="pause"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .play svg { width: 14px; height: 14px; flex: none; }
+  .tl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); flex: 1; min-width: 0; border: 1px solid var(--line); }
+  .tl li { position: relative; min-width: 0; }
+  .tl li + li { border-left: 1px dashed var(--line); }
+  .tl button { width: 100%; height: 100%; display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; background: none; border: 0; color: var(--muted); font-size: 13px; line-height: 1.3; text-align: left; cursor: pointer; }
+  .tl button:hover { background: var(--chip); color: var(--fg); }
+  .tl .num { flex: none; font-weight: 500; }
+  .tl .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl li[data-state="done"] button { color: var(--fg); }
+  .tl li[data-state="current"] button { background: var(--accent); color: var(--accent-fg); font-weight: 500; }
+  .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--flow); }
+  @keyframes grow { from { width: 0; } to { width: 100%; } }
+  .tl-now { margin: 8px 0 0; height: 2.8em; overflow: hidden; font-size: 13px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tl-now b { color: var(--fg); font-weight: 500; }
 
-  /* Figure + inspector */
-  .main { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-  @media (min-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr) 360px; } }
-  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
-  #diagram { width: 100%; height: auto; display: block; }
-  figcaption { color: var(--muted); font-size: 13px; }
-  .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
-  .legend li { display: flex; align-items: center; gap: 6px; }
-  .legend svg { flex: none; }
+  /* Stage: explanation + pointer pair on the left, drawing on the right, split by a dashed rule */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "fig" "insp"; }
+  .narration { grid-area: text; }
+  .canvas { grid-area: fig; }
+  .inspect { grid-area: insp; }
+  .narration, .inspect, .canvas { padding: 20px 24px; }
+  .canvas, .inspect { border-top: 1px dashed var(--line); }
+  @media (min-width: 1100px) {
+    .stage { grid-template-columns: 440px minmax(0, 1fr); grid-template-areas: "text fig" "insp fig"; grid-template-rows: auto 1fr; }
+    .narration, .inspect { border-right: 1px dashed var(--line); }
+    .canvas { border-top: 0; align-self: start; }
+    .tl-now { display: none; }
+  }
 
-  /* SVG styling */
-  .p-host { fill: var(--host-bg); stroke: var(--host-line); stroke-width: 1.5; }
-  .p-dev { fill: var(--dev-bg); stroke: var(--dev-line); stroke-width: 1.5; }
-  .hdr { font: 700 12px var(--sans); letter-spacing: .08em; }
-  .sub { font: 500 10.5px var(--sans); fill: var(--muted); }
-  .cap { font: 500 10px var(--sans); fill: var(--muted); }
-  .addr { font: 600 11px var(--mono); }
-  .fill-host, .host-c { fill: var(--host); }
-  .fill-dev, .dev-c { fill: var(--dev); }
-  .fill-flow, .flow-c { fill: var(--flow); }
-  .flow-c { font: 600 10.5px var(--mono); }
-  .cell { fill: var(--panel); stroke-width: 1; }
-  .cell.h { stroke: var(--host-line); }
-  .cell.d { stroke: var(--dev-line); }
-  .blk.h { fill: none; stroke: var(--host); stroke-width: 1.5; }
-  .blk.d { fill: none; stroke: var(--dev); stroke-width: 1.5; }
-  .idx { font: 9px var(--mono); fill: var(--muted); }
-  .val { font: 600 13px var(--mono); fill: var(--ink); }
-  .unk { font: 600 13px var(--mono); fill: var(--muted); }
-  .ph { fill: none; stroke: var(--dev-line); stroke-width: 1.5; stroke-dasharray: 4 4; }
-  .ph-t { font: 500 10px var(--sans); fill: var(--muted); }
-  .tab { fill: var(--host-bg); stroke: var(--host); stroke-width: 1; }
-  .tab-t { font: 600 10.5px var(--mono); }
-  .amp { fill: var(--ink); }
-  .pbox { fill: var(--panel); stroke: var(--host); stroke-width: 1.5; }
-  .pdiv { stroke: var(--host-line); stroke-width: 1; }
-  .pname { font: 700 12px var(--mono); fill: var(--ink); }
-  .pval { font: 600 12px var(--mono); }
-  .parr { fill: none; stroke-width: 1.6; }
-  .parr.host-s { stroke: var(--host); }
-  .parr.dev-s { stroke: var(--dev); }
-  .dot.host-s { fill: var(--host); }
-  .dot.dev-s { fill: var(--dev); }
-  .dim { opacity: .4; }
-  .flow { fill: none; stroke: var(--flow); stroke-width: 3; stroke-dasharray: 7 5; animation: march 0.9s linear infinite; }
-  @keyframes march { to { stroke-dashoffset: -12; } }
-  @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
-  .chg { fill: none; stroke: var(--changed); stroke-width: 2.5; }
-  .badge circle { fill: var(--ink); }
-  .badge text { fill: var(--bg); font: 700 10px var(--sans); }
+  /* All five explanations share one grid cell, so the box is always as tall as the longest one */
+  .beats { display: grid; }
+  .beat { grid-area: 1 / 1; visibility: hidden; display: grid; gap: 12px; align-content: start; }
+  .beat.on { visibility: visible; animation: fade .3s ease-out; }
+  .beat h2 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 500; letter-spacing: .01em; text-wrap: balance; }
+  .beat h2 .n { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .beat pre { margin: 0; padding: 10px 12px; background: var(--chip); font: 400 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: break-word; }
+  .beat p { margin: 0; }
+  .keys { margin: 16px 0 0; padding-top: 10px; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); }
+
+  /* Drawing */
+  .canvas { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  #diagram { display: block; width: 100%; height: auto; flex: 0 1 auto; min-height: 0; }
+  @media (min-width: 1100px) and (min-height: 760px) {
+    .canvas { position: sticky; top: var(--tl-h, 62px); max-height: calc(100vh - var(--tl-h, 62px)); }
+  }
+  .legend { flex: none; list-style: none; margin: 0; padding: 12px 0 0; display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 12px; line-height: 1.45; color: var(--muted); border-top: 1px dashed var(--line); }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend svg { flex: none; overflow: visible; }
+  figcaption { flex: none; font-size: 12px; color: var(--muted); }
+
+  /* SVG styling: 1px outlines with a low-opacity fill of the same color */
+  .reg { stroke-width: 1; fill-opacity: .06; }
+  .h { fill: var(--host); stroke: var(--host); }
+  .d { fill: var(--dev); stroke: var(--dev); }
+  .cell { fill-opacity: .12; stroke-opacity: .5; stroke-width: 1; }
+  .cell.clear { fill: none; }
+  .blk { fill: none; stroke-width: 1.25; }
+  .chg { fill: var(--chg-bg); stroke: var(--chg); stroke-width: 1.5; }
+  .tab { fill-opacity: .25; stroke-width: 1; }
+  .pbox { fill: var(--bg); stroke: var(--host); stroke-width: 1.25; }
+  .pdiv { stroke: var(--host); stroke-opacity: .5; }
+  .hatch { fill: url(#hatch); }
+  .hatch-l { stroke: var(--hatch); stroke-width: 1; }
+  .t-hdr { font: 500 12px var(--mono); letter-spacing: .1em; }
+  .t-sub, .t-cap { font: 400 10px var(--mono); fill: var(--muted); }
+  .t-cap.sm { font-size: 9.5px; }
+  .host-c { fill: var(--host); }
+  .dev-c { fill: var(--dev); }
+  .addr { font: 500 11px var(--mono); }
+  .idx { font: 400 9px var(--mono); fill: var(--muted); }
+  .val { font: 500 14px var(--mono); fill: var(--fg); }
+  .unk { font: 400 13px var(--mono); fill: var(--muted); }
+  .tab-t { font: 500 10.5px var(--mono); }
+  .amp, .pname { fill: var(--fg); }
+  .pname { font: 500 12px var(--mono); }
+  .pval { font: 500 12px var(--mono); }
+  .arr { fill: none; stroke-width: 1.25; }
+  .arr.host { stroke: var(--host); }
+  .arr.dev { stroke: var(--dev); }
+  .hd-host, .dot-host { fill: var(--host); }
+  .hd-dev, .dot-dev { fill: var(--dev); }
+  .hd-flow { fill: var(--flow); }
+  .flow { fill: none; stroke: var(--flow); stroke-width: 2; stroke-linejoin: miter; }
+  .flow-t { font: 500 11px var(--mono); fill: var(--flow); }
+  .ph { fill: none; stroke: var(--muted); stroke-dasharray: 3 4; }
+  .ph-t { font: 400 10px var(--mono); fill: var(--muted); }
+  .badge rect { fill: var(--fg); }
+  .badge text { font: 500 10.5px var(--mono); fill: var(--bg); }
+  .dim { opacity: .38; }
   .band-hit { fill: transparent; cursor: pointer; }
 
-  /* Inspector */
-  .inspect { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 12px; }
-  .inspect h2 { margin: 0; font-size: 16px; }
+  /* What changed in this step draws itself in */
+  .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .6s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .pop { opacity: 0; animation: fade .2s ease-out .5s forwards; }
+  .fade { animation: fade .45s ease-out both; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Pointer pair */
+  .inspect { display: grid; gap: 14px; align-content: start; }
   .inspect > p { margin: 0; color: var(--muted); font-size: 13px; }
-  .picker { display: flex; gap: 6px; flex-wrap: wrap; }
-  .picker button { font: 600 13px var(--mono); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
-  .picker button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .picker { display: flex; }
+  .picker button { padding: 5px 18px; font: 500 13px var(--mono); color: var(--fg); background: transparent; border: 1px solid var(--line); cursor: pointer; }
+  .picker button + button { border-left: 0; }
+  .picker button:hover { background: var(--chip); }
+  .picker button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
   .pair { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 640px) and (max-width: 1099px) { .pair { grid-template-columns: 1fr 1fr; } }
-  .col { border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; }
-  .col.host { background: var(--host-bg); border: 1px solid var(--host-line); }
-  .col.dev { background: var(--dev-bg); border: 1px solid var(--dev-line); }
-  .col h3 { margin: 0; font-size: 13px; font-weight: 600; }
-  .row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; align-items: baseline; }
-  .row .b { grid-row: span 2; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg); font: 700 11px var(--sans); }
-  .row .ev { font-family: var(--mono); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
-  .row .ev .e { font-weight: 600; }
+  .col { padding: 12px 14px 14px; display: grid; gap: 10px; align-content: start; }
+  .col.host { border: 1px solid var(--host); background: color-mix(in srgb, var(--host) 7%, transparent); }
+  .col.dev { border: 1px solid var(--dev); background: color-mix(in srgb, var(--dev) 7%, transparent); }
+  .col h3 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .col h3 code { text-transform: none; letter-spacing: 0; color: var(--fg); }
+  .row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 2px 10px; align-items: baseline; }
+  .row .b { grid-row: span 2; display: inline-grid; place-items: center; width: 18px; height: 18px; font: 500 11px/1 var(--mono); color: var(--bg); background: var(--fg); }
+  .row .ev { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 13.5px; }
+  .row .ev .e, .row .ev .v { font-weight: 500; }
   .row .ev .eq { color: var(--muted); }
-  .row .ev .v { font-weight: 600; }
   .row .ev .v.unk-t { color: var(--muted); }
-  .row .why { font-size: 12.5px; color: var(--muted); }
-  .row .why b { color: var(--ink); font-weight: 600; }
-  .check { margin: 0; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+  .row .why { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+  .row .why b { color: var(--fg); font-weight: 500; }
+  .check { margin: 0; padding-top: 12px; font-size: 12.5px; color: var(--muted); border-top: 1px dashed var(--line); }
 
-  .notes { display: grid; gap: 8px; max-width: 80ch; }
-  .notes h2 { margin: 0; font-size: 16px; }
-  .notes ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
-  .notes li b { color: var(--ink); font-weight: 600; }
-
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .notes { padding: 22px 24px 26px; display: grid; gap: 10px; border-top: 1px solid var(--line); }
+  .notes ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 96ch; color: var(--muted); }
+  .notes li b { color: var(--fg); font-weight: 500; }
 
   @media (max-width: 720px) {
-    .steps { grid-template-columns: 1fr; }
-    .steps button { padding: 7px 10px; }
-    .wrap { padding-inline: 16px; }
+    body { padding: 0; }
+    .frame { border: 0; }
+    .top, .timeline, .narration, .inspect, .canvas, .notes { padding-inline: 16px; }
+    .tl-row { gap: 8px; }
+    .play { padding: 0 10px; }
+    .play .play-t { display: none; }
+    .tl button { justify-content: center; padding: 8px 4px; }
+    .tl .lbl { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .draw { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+    .pop, .fade, .beat.on { animation: none; opacity: 1; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <p class="eyebrow">PMPP ch. 3 · 2×2 matmul · host and device memory</p>
+<div class="frame">
+  <header class="top">
+    <p class="label">PMPP ch. 3 · 2×2 matmul · host and device memory</p>
     <h1>Where <code class="host-t">M_h</code> and <code class="dev-t">M_d</code> point</h1>
     <p class="lede">A pointer is a small variable that lives in one place and stores the address of something else. Step through a 2×2 matmul and watch three separate things for each pointer: where the variable lives, the address it stores, and the float at that address.</p>
   </header>
 
-  <section class="stepper" aria-label="Walkthrough steps">
-    <ol class="steps" id="steps"></ol>
-    <div class="nav">
-      <button type="button" id="prev">← Back</button>
-      <button type="button" id="next">Next →</button>
-      <span class="hint">Arrow keys also move between steps.</span>
+  <nav class="timeline" id="timeline" aria-label="Walkthrough steps">
+    <div class="tl-row">
+      <button type="button" class="play" id="play"><span id="play-icon" aria-hidden="true"></span><span class="play-t" id="play-t">Play</span></button>
+      <ol class="tl" id="steps"></ol>
     </div>
-  </section>
+    <p class="tl-now" id="tl-now" aria-hidden="true"></p>
+  </nav>
+  <p class="sr" aria-live="polite" id="announce"></p>
 
-  <section class="stage" aria-live="polite">
-    <h2 id="stage-title"></h2>
-    <pre id="stage-code"></pre>
-    <p id="stage-text"></p>
-  </section>
+  <div class="stage">
+    <section class="narration" aria-label="What happens in this step">
+      <div class="beats" id="beats"></div>
+      <p class="keys">Arrow keys also move between steps.</p>
+    </section>
 
-  <div class="main">
-    <figure>
+    <figure class="canvas">
       <svg id="diagram" role="img" aria-labelledby="diagram-label" xmlns="http://www.w3.org/2000/svg"></svg>
       <p id="diagram-label" class="sr"></p>
       <ul class="legend" aria-label="Legend">
-        <li><svg width="44" height="30" viewBox="0 0 44 30" aria-hidden="true"><rect x="1" y="1" width="30" height="10" class="tab"/><rect x="1" y="11" width="42" height="17" class="pbox"/></svg><span>Tab = the variable's own address (<code>&amp;p</code>). Inside the box = the address it stores (<code>p</code>).</span></li>
-        <li><svg width="30" height="12" viewBox="0 0 30 12" aria-hidden="true"><line x1="2" y1="6" x2="22" y2="6" class="parr host-s"/><path d="M20,2 L28,6 L20,10 z" class="fill-host"/></svg><svg width="30" height="12" viewBox="0 0 30 12" aria-hidden="true"><line x1="2" y1="6" x2="22" y2="6" class="parr dev-s"/><path d="M20,2 L28,6 L20,10 z" class="fill-dev"/></svg><span>Stored address → the float it points to (colored by where that float lives)</span></li>
-        <li><svg width="34" height="12" viewBox="0 0 34 12" aria-hidden="true"><line x1="2" y1="6" x2="32" y2="6" stroke="var(--flow)" stroke-width="3" stroke-dasharray="7 5"/></svg><span>Floats copied or computed in this step</span></li>
-        <li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" class="chg"/></svg><span>Changed in this step</span></li>
-        <li><span><code>?</code> = garbage: allocated or declared, never written</span></li>
+        <li><svg width="46" height="30" viewBox="0 0 46 30" data-sw="tab" aria-hidden="true"></svg><span>Tab = the variable's own address (<code>&amp;p</code>). Inside the box = the address it stores (<code>p</code>).</span></li>
+        <li><svg width="28" height="14" viewBox="0 0 28 14" data-sw="arr-host" aria-hidden="true"></svg><svg width="28" height="14" viewBox="0 0 28 14" data-sw="arr-dev" aria-hidden="true"></svg><span>Stored address → the float it points to (colored by where that float lives)</span></li>
+        <li><svg width="34" height="14" viewBox="0 0 34 14" data-sw="flow" aria-hidden="true"></svg><span>Floats copied or computed in this step</span></li>
+        <li><svg width="22" height="16" viewBox="0 0 22 16" data-sw="hl" aria-hidden="true"></svg><span>Changed in this step</span></li>
+        <li><svg width="20" height="16" viewBox="0 0 20 16" data-sw="hatch" aria-hidden="true"></svg><span><code>?</code> = garbage: allocated or declared, never written</span></li>
       </ul>
       <figcaption>Addresses are made-up examples chosen to be short. Real ones are 64-bit and change every run. Blocks are drawn as flat memory, <code>[0]</code> to <code>[3]</code>, in row-major order.</figcaption>
     </figure>
 
     <section class="inspect" aria-labelledby="inspect-h">
-      <h2 id="inspect-h">Read one pointer pair</h2>
+      <h2 class="label" id="inspect-h">Read one pointer pair</h2>
       <p>Pick a matrix. The numbers ①②③ match the badges in the diagram.</p>
       <div class="picker" role="group" aria-label="Matrix">
         <button type="button" data-m="M" aria-pressed="true">M</button>
@@ -215,7 +258,7 @@
   </div>
 
   <section class="notes">
-    <h2>What the picture is careful about</h2>
+    <h2 class="label">What the picture is careful about</h2>
     <ul>
       <li><b><code>cudaMalloc</code> copies no floats.</b> It reserves GPU bytes and writes one address into <code>M_d</code>. The GPU block holds garbage until <code>cudaMemcpy</code> or a kernel writes it.</li>
       <li><b><code>&amp;M_d</code> is a host address in this <code>matmul()</code> function.</b> The kernel launch passes the <em>value</em> of <code>M_d</code>. In your <code>MatMulKernel</code> the parameter is also named <code>M_d</code>, but it is a separate variable that holds a copy of that GPU address.</li>
@@ -292,63 +335,81 @@
   let step = 1;
   let selected = 'M';
   let layoutName = 'wide';
+  let playing = false;
+  let timer = null;
+  const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const svg = document.getElementById('diagram');
 
-  function block(L, x, b, region, cells, addr, caption, isChanged) {
-    const r = region === 'host' ? 'h' : 'd';
-    let o = `<text x="${x}" y="${b + 10}" class="cap">${caption}</text>`;
-    o += `<text x="${x}" y="${b + 24}" class="addr ${region}-c">${addr}</text>`;
-    for (let k = 0; k < 4; k++) {
-      const y = b + 30 + k * 24;
-      const v = cells ? cells[k] : '?';
-      o += `<rect x="${x}" y="${y}" width="${L.cw}" height="24" class="cell ${r}"/>`;
-      o += `<text x="${x + 5}" y="${y + 15}" class="idx">[${k}]</text>`;
-      o += `<text x="${x + L.cw / 2 + 8}" y="${y + 17}" text-anchor="middle" class="${cells ? 'val' : 'unk'}">${v}</text>`;
-    }
-    o += `<rect x="${x}" y="${b + 30}" width="${L.cw}" height="96" class="blk ${r}"/>`;
-    if (isChanged) o += `<rect x="${x - 3}" y="${b + 27}" width="${L.cw + 6}" height="102" rx="3" class="chg"/>`;
+  // ---- Drawing primitives: square corners, 1px outlines, filled triangle heads
+  const R1 = v => Math.round(v * 10) / 10;
+  const rect = (x, y, w, h, cls) => `<rect x="${R1(x)}" y="${R1(y)}" width="${R1(w)}" height="${R1(h)}" class="${cls}"/>`;
+  function head(tip, from, cls, size = 7) {
+    const a = Math.atan2(tip[1] - from[1], tip[0] - from[0]);
+    const p = s => [R1(tip[0] - size * Math.cos(a + s)), R1(tip[1] - size * Math.sin(a + s))];
+    return `<path d="M${R1(tip[0])},${R1(tip[1])} L${p(0.42)} L${p(-0.42)} Z" class="${cls}"/>`;
+  }
+  function arrow(p0, c1, c2, p3, region, dim, animate) {
+    const d = `M${p0} C${c1} ${c2} ${p3}`;
+    return `<path d="${d}" pathLength="1" class="arr ${region}${dim}${animate ? ' draw' : ''}"/>` +
+      head(p3, c2, `hd-${region}${dim}${animate ? ' pop' : ''}`);
+  }
+  function flowPath(pts, withHead, animate) {
+    const d = 'M' + pts.map(p => p.join(',')).join(' L');
+    let o = `<path d="${d}" pathLength="1" class="flow${animate ? ' draw' : ''}"/>`;
+    if (withHead) o += head(pts[pts.length - 1], pts[pts.length - 2], `hd-flow${animate ? ' pop' : ''}`, 8);
     return o;
   }
 
-  function pointer(L, y, name, varAddr, value, target, isChanged) {
+  function block(L, x, b, region, cells, addr, caption, opts) {
+    const r = region === 'host' ? 'h' : 'd';
+    let o = `<text x="${x}" y="${b + 10}" class="t-cap${L.narrow ? ' sm' : ''}">${caption}</text>`;
+    o += `<text x="${x}" y="${b + 24}" class="addr ${region}-c">${addr}</text>`;
+    if (opts.changed) o += rect(x - 4, b + 26, L.cw + 8, 104, 'chg' + (opts.anim ? ' fade' : ''));
+    for (let k = 0; k < 4; k++) {
+      const y = b + 30 + k * 24;
+      o += rect(x, y, L.cw, 24, `cell ${r}${opts.changed ? ' clear' : ''}`);
+      if (!cells) o += rect(x + 1, y + 1, L.cw - 2, 22, 'hatch');
+      o += `<text x="${x + 5}" y="${y + 15}" class="idx">[${k}]</text>`;
+      o += `<text x="${x + L.cw / 2 + 8}" y="${y + 17}" text-anchor="middle" class="${cells ? 'val' : 'unk'}${opts.anim && cells ? ' fade' : ''}">${cells ? cells[k] : '?'}</text>`;
+    }
+    o += rect(x, b + 30, L.cw, 96, `blk ${r}`);
+    return o;
+  }
+
+  function pointer(L, y, name, varAddr, value, target, opts) {
     const x = L.sx;
-    let o = `<rect x="${x}" y="${y - 16}" width="${L.tabW}" height="16" rx="2" class="tab"/>`;
+    let o = rect(x, y - 16, L.tabW, 16, 'tab h');
     o += `<text x="${x + 6}" y="${y - 4.5}" class="tab-t"><tspan class="amp">&amp;${name}</tspan><tspan class="host-c">${L.narrow ? ' ' : ' = '}${varAddr}</tspan></text>`;
-    o += `<rect x="${x}" y="${y}" width="${L.sw}" height="30" class="pbox"/>`;
+    o += rect(x, y, L.sw, 30, 'pbox');
+    if (opts.changed) o += rect(x + L.nw + 3, y + 3, L.sw - L.nw - 6, 24, 'chg' + (opts.anim ? ' fade' : ''));
     o += `<line x1="${x + L.nw}" y1="${y}" x2="${x + L.nw}" y2="${y + 30}" class="pdiv"/>`;
     o += `<text x="${x + 7}" y="${y + 19.5}" class="pname">${name}</text>`;
-    if (value) {
-      o += `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="pval ${target}-c">${value}</text>`;
-    } else {
-      o += `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="unk">?${L.narrow ? '' : '  (garbage)'}</text>`;
-    }
-    if (isChanged) o += `<rect x="${x + L.nw + 2}" y="${y + 2}" width="${L.sw - L.nw - 4}" height="26" rx="2" class="chg"/>`;
+    o += value
+      ? `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="pval ${target}-c${opts.anim ? ' fade' : ''}">${value}</text>`
+      : `<text x="${x + L.nw + 8}" y="${y + 19.5}" class="unk">?${L.narrow ? '' : '  (garbage)'}</text>`;
     return o;
   }
 
   function badge(x, y, n) {
-    return `<g class="badge" aria-hidden="true"><circle cx="${x}" cy="${y}" r="8"/><text x="${x}" y="${y + 3.5}" text-anchor="middle">${n}</text></g>`;
+    return `<g class="badge" aria-hidden="true"><rect x="${x - 8}" y="${y - 8}" width="16" height="16"/><text x="${x}" y="${y + 3.8}" text-anchor="middle">${n}</text></g>`;
   }
 
-  function renderDiagram() {
+  function renderDiagram(animate) {
     const L = LAYOUTS[layoutName];
     const s = step;
+    const an = animate && !reduceMotion;
     svg.setAttribute('viewBox', `0 0 ${L.W} ${H}`);
-    let o = `<defs>
-      <marker id="ah-host" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-host"/></marker>
-      <marker id="ah-dev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-dev"/></marker>
-      <marker id="ah-flow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-flow"/></marker>
-    </defs>`;
+    let o = `<defs><pattern id="hatch" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" class="hatch-l"/></pattern></defs>`;
 
     // Memory regions
-    o += `<rect x="${L.host[0]}" y="4" width="${L.host[1] - L.host[0]}" height="${H - 8}" rx="10" class="p-host"/>`;
-    o += `<rect x="${L.dev[0]}" y="4" width="${L.dev[1] - L.dev[0]}" height="${H - 8}" rx="10" class="p-dev"/>`;
-    o += `<text x="${L.host[0] + 12}" y="22" class="hdr host-c">${L.narrow ? 'HOST · CPU' : 'HOST · CPU memory'}</text>`;
-    o += `<text x="${L.dev[0] + 12}" y="22" class="hdr dev-c">${L.narrow ? 'DEVICE · GPU' : 'DEVICE · GPU memory'}</text>`;
-    o += `<text x="${L.heapX}" y="40" class="sub">${L.narrow ? 'heap' : 'heap blocks (malloc)'}</text>`;
-    o += `<text x="${L.sx}" y="40" class="sub">${L.narrow ? 'stack: pointers' : 'matmul() stack: pointer variables'}</text>`;
-    o += `<text x="${L.devX}" y="40" class="sub">${L.narrow ? 'global memory' : 'global memory (cudaMalloc)'}</text>`;
+    o += rect(L.host[0], 4, L.host[1] - L.host[0], H - 8, 'reg h');
+    o += rect(L.dev[0], 4, L.dev[1] - L.dev[0], H - 8, 'reg d');
+    o += `<text x="${L.host[0] + 12}" y="24" class="t-hdr host-c">${L.narrow ? 'HOST · CPU' : 'HOST · CPU MEMORY'}</text>`;
+    o += `<text x="${L.dev[0] + 12}" y="24" class="t-hdr dev-c">${L.narrow ? 'DEVICE · GPU' : 'DEVICE · GPU MEMORY'}</text>`;
+    o += `<text x="${L.heapX}" y="42" class="t-sub">${L.narrow ? 'heap' : 'heap blocks (malloc)'}</text>`;
+    o += `<text x="${L.sx}" y="42" class="t-sub">${L.narrow ? 'stack: pointers' : 'matmul() stack: pointer variables'}</text>`;
+    o += `<text x="${L.devX}" y="42" class="t-sub">${L.narrow ? 'global memory' : 'global memory (cudaMalloc)'}</text>`;
 
     MATS.forEach((m, i) => {
       const b = TOP + i * BAND;
@@ -362,40 +423,40 @@
       o += `<rect x="${L.host[0]}" y="${b - 4}" width="${L.dev[1] - L.host[0]}" height="${BAND - 2}" class="band-hit"/>`;
 
       o += block(L, L.heapX, b, 'host', heapCells(m, s), m.heap,
-        L.narrow ? `${m.key} · malloc` : `${m.key} · malloc, 16 B`, ch.heap);
+        L.narrow ? `${m.key} · malloc` : `${m.key} · malloc, 16 B`, { changed: ch.heap, anim: an && ch.heap });
 
       if (devAllocated(s)) {
         o += block(L, L.devX, b, 'dev', devCells(m, s), m.gpu,
-          L.narrow ? `${m.key} · cudaMalloc` : `${m.key} · cudaMalloc, 16 B`, ch.dev);
+          L.narrow ? `${m.key} · cudaMalloc` : `${m.key} · cudaMalloc, 16 B`, { changed: ch.dev, anim: an && ch.dev });
       } else {
-        o += `<rect x="${L.devX}" y="${b + 30}" width="${L.cw}" height="96" rx="4" class="ph"/>`;
+        o += rect(L.devX, b + 30, L.cw, 96, 'ph');
         o += `<text x="${dc}" y="${b + 75}" text-anchor="middle" class="ph-t">not</text>`;
         o += `<text x="${dc}" y="${b + 89}" text-anchor="middle" class="ph-t">allocated</text>`;
       }
 
-      o += pointer(L, b + 42, m.h, m.hVar, m.heap, 'host', ch.hval);
-      o += pointer(L, b + 100, m.d, m.dVar, dp, 'dev', ch.dval);
+      o += pointer(L, b + 42, m.h, m.hVar, m.heap, 'host', { changed: ch.hval, anim: an && ch.hval });
+      o += pointer(L, b + 100, m.d, m.dVar, dp, 'dev', { changed: ch.dval, anim: an && ch.dval });
 
       // Pointer arrows: from the stored value to cell [0] of the block it names
       const dim = sel ? '' : ' dim';
       const hx = L.heapX + L.cw;
-      o += `<circle cx="${L.sx}" cy="${b + 57}" r="3" class="dot host-s${dim}"/>`;
-      o += `<path d="M${L.sx},${b + 57} C${L.sx - 18},${b + 57} ${hx + 18},${b + 42} ${hx + 3},${b + 42}" class="parr host-s${dim}" marker-end="url(#ah-host)"/>`;
+      o += `<circle cx="${L.sx}" cy="${b + 57}" r="2.6" class="dot-host${dim}"/>`;
+      o += arrow([L.sx, b + 57], [L.sx - 18, b + 57], [hx + 18, b + 42], [hx + 2, b + 42], 'host', dim, an && s === 1);
       if (dp) {
         const x0 = L.sx + L.sw;
-        o += `<circle cx="${x0}" cy="${b + 115}" r="3" class="dot dev-s${dim}"/>`;
-        o += `<path d="M${x0},${b + 115} C${x0 + 30},${b + 115} ${L.devX - 30},${b + 42} ${L.devX - 3},${b + 42}" class="parr dev-s${dim}" marker-end="url(#ah-dev)"/>`;
+        o += `<circle cx="${x0}" cy="${b + 115}" r="2.6" class="dot-dev${dim}"/>`;
+        o += arrow([x0, b + 115], [x0 + 30, b + 115], [L.devX - 30, b + 42], [L.devX - 2, b + 42], 'dev', dim, an && s === 2);
       }
 
       // Copies along the lane under each band
       const midX = L.sx + L.sw / 2;
       if (s === 3 && m.key !== 'out') {
-        o += `<path d="M${hc},${b + 128} V${b + 146} H${dc} V${b + 132}" class="flow" marker-end="url(#ah-flow)"/>`;
-        o += `<text x="${midX}" y="${b + 161}" text-anchor="middle" class="flow-c">cudaMemcpy → 16 B</text>`;
+        o += flowPath([[hc, b + 128], [hc, b + 146], [dc, b + 146], [dc, b + 129]], true, an);
+        o += `<text x="${midX}" y="${b + 162}" text-anchor="middle" class="flow-t${an ? ' pop' : ''}">cudaMemcpy → 16 B</text>`;
       }
       if (s === 5 && m.key === 'out') {
-        o += `<path d="M${dc},${b + 128} V${b + 146} H${hc} V${b + 132}" class="flow" marker-end="url(#ah-flow)"/>`;
-        o += `<text x="${midX}" y="${b + 161}" text-anchor="middle" class="flow-c">← cudaMemcpy 16 B</text>`;
+        o += flowPath([[dc, b + 128], [dc, b + 146], [hc, b + 146], [hc, b + 129]], true, an);
+        o += `<text x="${midX}" y="${b + 162}" text-anchor="middle" class="flow-t${an ? ' pop' : ''}">← cudaMemcpy 16 B</text>`;
       }
 
       if (sel) {
@@ -411,11 +472,12 @@
 
     // Kernel: reads the M and N blocks, writes the out block (all on the GPU)
     if (s === 4) {
-      const re = L.devX + L.cw, kx = L.narrow ? re + 24 : re + 60;
+      const re = L.devX + L.cw, kx = L.narrow ? re + 36 : re + 60;
       const ym = TOP + 78, yn = TOP + BAND + 78, yo = TOP + 2 * BAND + 78;
-      o += `<path d="M${re},${ym} H${kx} V${yo} H${re + 5}" class="flow" marker-end="url(#ah-flow)"/>`;
-      o += `<path d="M${re},${yn} H${kx}" class="flow"/>`;
-      o += `<text transform="translate(${kx + 12},${(ym + yo) / 2}) rotate(90)" text-anchor="middle" class="flow-c">${L.narrow ? 'MatMulKernel' : 'MatMulKernel: reads M, N → writes out'}</text>`;
+      o += flowPath([[re + 1, ym], [kx, ym], [kx, yo], [re + 3, yo]], true, an);
+      o += flowPath([[re + 1, yn], [kx, yn]], false, an);
+      // Phones have no room for this label; the pinned step title names the kernel there
+      if (!L.narrow) o += `<text transform="translate(${kx + 14},${(ym + yo) / 2}) rotate(90)" text-anchor="middle" class="flow-t${an ? ' pop' : ''}">MatMulKernel: reads M, N → writes out</text>`;
     }
 
     svg.innerHTML = o;
@@ -483,36 +545,102 @@
       btn.setAttribute('aria-pressed', String(btn.dataset.m === selected)));
   }
 
-  function renderStage() {
-    const st = STEPS[step - 1];
-    document.getElementById('stage-title').textContent = `Step ${step} of 5 · ${st.title}`;
-    document.getElementById('stage-code').textContent = st.code;
-    document.getElementById('stage-text').textContent = st.text;
-    document.querySelectorAll('#steps button').forEach(btn => {
-      if (Number(btn.dataset.step) === step) btn.setAttribute('aria-current', 'step');
-      else btn.removeAttribute('aria-current');
+  // ---- Explanations: built once, stacked in one grid cell, toggled by visibility
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Same words, marked up: addresses take the color of the memory they belong to
+  function rich(t) {
+    return esc(t)
+      .replace(/0x(?:7ffd|55a2)[0-9a-f]{2}/g, a => `<span class="host-t">${a}</span>`)
+      .replace(/0xb00[0-9a-f]{3}/g, a => `<span class="dev-t">${a}</span>`)
+      .replace(/(?:&amp;)?\b(?:M|N|out)_[hd](?:\[\d\])?/g, v => `<code>${v}</code>`)
+      .replace(/\b(cudaMalloc|cudaMemcpy|cudaFree|malloc)\b/g, '<code>$1</code>');
+  }
+  const beatsEl = document.getElementById('beats');
+  beatsEl.innerHTML = STEPS.map((st, i) =>
+    `<article class="beat" data-step="${i + 1}" aria-hidden="true">
+      <h2><span class="n">Step ${i + 1} of 5</span> ${rich(st.title)}</h2>
+      <pre>${esc(st.code)}</pre>
+      <p>${rich(st.text)}</p>
+    </article>`).join('');
+
+  function renderNarration() {
+    beatsEl.querySelectorAll('.beat').forEach(el => {
+      const on = Number(el.dataset.step) === step;
+      el.classList.toggle('on', on);
+      el.setAttribute('aria-hidden', String(!on));
     });
-    document.getElementById('prev').disabled = step === 1;
-    document.getElementById('next').disabled = step === STEPS.length;
+    const st = STEPS[step - 1];
+    document.getElementById('announce').textContent = `Step ${step} of 5: ${st.title}`;
+    document.getElementById('tl-now').innerHTML = `<b>Step ${step} of 5 ·</b> ${rich(st.title)}`;
   }
 
-  function render() { renderStage(); renderDiagram(); renderInspector(); }
-
-  function go(n) {
-    step = Math.min(STEPS.length, Math.max(1, n));
-    render();
-  }
-
-  // Build step buttons
+  // ---- Timeline
   const stepsEl = document.getElementById('steps');
   stepsEl.innerHTML = STEPS.map((st, i) =>
-    `<li><button type="button" data-step="${i + 1}"><span class="n">${i + 1}</span><span>${st.short}</span></button></li>`).join('');
+    `<li data-step="${i + 1}"><button type="button" data-step="${i + 1}" aria-label="Step ${i + 1}: ${st.short}"><span class="num">0${i + 1}</span><span class="lbl">${st.short}</span></button><span class="bar" aria-hidden="true"></span></li>`).join('');
+
+  const ICONS = {
+    play: '<svg viewBox="0 0 14 14"><path d="M3 1.5 L12 7 L3 12.5 Z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 14 14"><rect x="2.5" y="1.5" width="3" height="11" fill="currentColor"/><rect x="8.5" y="1.5" width="3" height="11" fill="currentColor"/></svg>',
+    replay: '<svg viewBox="0 0 14 14"><path d="M11.6 7.6 A4.7 4.7 0 1 1 10.2 3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7.6 1 L11.4 3.4 L8.4 6.2 Z" fill="currentColor"/></svg>'
+  };
+
+  function renderTimeline() {
+    stepsEl.querySelectorAll('li').forEach(li => {
+      const n = Number(li.dataset.step);
+      li.dataset.state = n < step ? 'done' : n === step ? 'current' : 'todo';
+      const btn = li.querySelector('button');
+      if (n === step) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+      li.querySelector('.bar').style.animation = '';
+    });
+    const mode = playing ? 'pause' : step === STEPS.length ? 'replay' : 'play';
+    const play = document.getElementById('play');
+    play.dataset.mode = mode;
+    document.getElementById('play-icon').innerHTML = ICONS[mode];
+    document.getElementById('play-t').textContent = mode === 'pause' ? 'Pause' : mode === 'replay' ? 'Replay' : 'Play';
+    play.setAttribute('aria-label', mode === 'pause' ? 'Pause walkthrough' : mode === 'replay' ? 'Replay walkthrough from step 1' : 'Play walkthrough');
+  }
+
+  // Autoplay: each step stays up long enough to read its explanation
+  const dwell = n => Math.min(22000, 5000 + STEPS[n - 1].text.split(/\s+/).length * 190);
+  function schedule() {
+    clearTimeout(timer);
+    if (!playing) return;
+    if (step >= STEPS.length) { setPlaying(false); return; }
+    const ms = dwell(step);
+    const bar = stepsEl.querySelector(`li[data-step="${step}"] .bar`);
+    if (bar && !reduceMotion) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = `grow ${ms}ms linear forwards`; }
+    timer = setTimeout(() => go(step + 1, { auto: true }), ms);
+  }
+  function setPlaying(p) {
+    playing = p;
+    clearTimeout(timer);
+    renderTimeline();
+    if (p) schedule();
+  }
+
+  function render(animate) { renderTimeline(); renderNarration(); renderDiagram(animate); renderInspector(); }
+
+  function go(n, opts = {}) {
+    const next = Math.min(STEPS.length, Math.max(1, n));
+    if (!opts.auto && playing) playing = false;
+    clearTimeout(timer);
+    const moved = next !== step;
+    step = next;
+    render(moved);
+    if (playing) schedule();
+  }
+
   stepsEl.addEventListener('click', e => {
     const btn = e.target.closest('button[data-step]');
     if (btn) go(Number(btn.dataset.step));
   });
-  document.getElementById('prev').addEventListener('click', () => go(step - 1));
-  document.getElementById('next').addEventListener('click', () => go(step + 1));
+  document.getElementById('play').addEventListener('click', () => {
+    if (playing) { setPlaying(false); return; }
+    playing = true;
+    if (step === STEPS.length) go(1, { auto: true });
+    else { renderTimeline(); schedule(); }
+  });
   document.addEventListener('keydown', e => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const tag = (e.target.tagName || '').toLowerCase();
@@ -520,27 +648,47 @@
     if (e.key === 'ArrowRight') { go(step + 1); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { go(step - 1); e.preventDefault(); }
   });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) setPlaying(false); });
 
   document.querySelector('.picker').addEventListener('click', e => {
     const btn = e.target.closest('button[data-m]');
-    if (btn) { selected = btn.dataset.m; renderDiagram(); renderInspector(); }
+    if (btn) { selected = btn.dataset.m; renderDiagram(false); renderInspector(); }
   });
   svg.addEventListener('click', e => {
     const hit = e.target.closest('[data-m]');
-    if (hit) { selected = hit.getAttribute('data-m'); renderDiagram(); renderInspector(); }
+    if (hit) { selected = hit.getAttribute('data-m'); renderDiagram(false); renderInspector(); }
   });
 
-  // Pick the diagram geometry from the figure's width, not the window's
+  // ---- Legend swatches use the same primitives as the diagram
+  const SW = {
+    tab: rect(1, 1, 28, 10, 'tab h') + rect(1, 11, 44, 17, 'pbox'),
+    'arr-host': `<line x1="2" y1="7" x2="22" y2="7" class="arr host"/>` + head([26, 7], [2, 7], 'hd-host'),
+    'arr-dev': `<line x1="2" y1="7" x2="22" y2="7" class="arr dev"/>` + head([26, 7], [2, 7], 'hd-dev'),
+    flow: `<line x1="2" y1="7" x2="26" y2="7" class="flow"/>` + head([32, 7], [2, 7], 'hd-flow', 8),
+    hl: rect(1, 1, 20, 14, 'chg'),
+    hatch: `<defs><pattern id="hatch-lg" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" class="hatch-l"/></pattern></defs>` +
+           `<rect x="1" y="1" width="18" height="14" fill="url(#hatch-lg)"/>` + rect(1, 1, 18, 14, 'blk h')
+  };
+  document.querySelectorAll('.legend svg[data-sw]').forEach(el => { el.innerHTML = SW[el.dataset.sw]; });
+
+  // ---- Layout: diagram geometry follows the figure's width; sticky offset follows the timeline's height
   const fig = svg.parentElement;
   function pickLayout() {
     const next = fig.clientWidth < 600 ? 'narrow' : 'wide';
-    if (next !== layoutName) { layoutName = next; renderDiagram(); }
+    if (next !== layoutName) { layoutName = next; renderDiagram(false); }
   }
-  if ('ResizeObserver' in window) new ResizeObserver(pickLayout).observe(fig);
-  else window.addEventListener('resize', pickLayout);
+  const tl = document.getElementById('timeline');
+  const setTl = () => document.documentElement.style.setProperty('--tl-h', tl.offsetHeight + 'px');
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(pickLayout).observe(fig);
+    new ResizeObserver(setTl).observe(tl);
+  } else {
+    window.addEventListener('resize', () => { pickLayout(); setTl(); });
+  }
+  setTl();
 
   layoutName = fig.clientWidth < 600 ? 'narrow' : 'wide';
-  render();
+  render(true);
 })();
 </script>
 </body>
