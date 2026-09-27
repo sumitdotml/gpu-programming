@@ -116,11 +116,13 @@ Use this exact shape for new entries.
 - prevention_rule: before reporting an interactive HTML artifact as done, render every step in a real browser at desktop and phone widths, in light and dark, and drive the controls with real input events
 - validation_check: a scripted headless-browser run clicks each control, reports no console errors, no horizontal overflow at 390px, and screenshots of each state show no overlapping text
 - first_seen: 2026-09-26
-- last_seen: 2026-09-26
-- occurrence_count: 1
+- last_seen: 2026-09-27
+- occurrence_count: 3
 - evidence:
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:361
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:414
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:475
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:561
 
 ### MISTAKE-20260926-002
 - id: MISTAKE-20260926-002
@@ -137,3 +139,17 @@ Use this exact shape for new entries.
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:221
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:253
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:259
+
+### MISTAKE-20260927-001
+- id: MISTAKE-20260927-001
+- status: active
+- severity: low
+- scope_tags: [docs, learning]
+- pattern: redesign of a learning artifact dropped a user-approved sentence (the arrow-key hint) together with the control it lived next to
+- prevention_rule: before rendering a redesigned artifact, extract every prose string from the last committed version and confirm each one still appears verbatim, or was removed on purpose and reported
+- validation_check: a script lists committed prose strings missing from the new file, and every item on that list is either restored or named in the final report
+- first_seen: 2026-09-27
+- last_seen: 2026-09-27
+- occurrence_count: 1
+- evidence:
+  - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:231
