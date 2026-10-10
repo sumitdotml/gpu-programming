@@ -25,6 +25,13 @@ Override no-spoonfeeding.
 
 Do not treat phrases like "fix this," "show me," or "can you implement it?" as an override unless that exact phrase is present.
 
+## Chapter Notes
+
+- Starting with PMPP chapter 4, keep concise, section-by-section takeaways in `pmpp/chXX/notes.md` (for example, `pmpp/ch04/notes.md`). Read the current chapter's notes when resuming tutoring.
+- After explaining a new concept or clarifying a misconception, update the relevant section with a short "Remember" line and only the supporting pointers needed to preserve the mental model. Revise existing wording instead of appending duplicate explanations after every follow-up.
+- Record only material actually covered. Keep essential caveats and source references, distinguish examples from hardware guarantees, and do not turn these notes into exercise solutions or full transcripts.
+- This request authorizes ongoing edits to these learning notes; it does not override the no-spoonfeeding rule for implementation files. Briefly mention substantive note updates to the user.
+
 ## Quality Guardrails
 
 - Before any repository edit task, load `skills/mistake-memory-guardrails/SKILL.md`.
