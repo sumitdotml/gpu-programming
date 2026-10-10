@@ -1,0 +1,1651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Work Versus Machinery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap">
+<style>
+  /* Palette follows the ch03 artifact (Modal GPU Glossary): "Light" by default, "Terminal" in dark mode.
+     Each annotation color has one meaning, and every colored thing also carries a word or a shape. */
+  :root {
+    --bg: #e9e9e9;
+    --fg: #212525;
+    --muted: #585c5c;
+    --line: #b5b8b8;
+    --chip: #d5d6d6;
+    --accent: #212525;
+    --accent-fg: #e9e9e9;
+    --work: #1342ff;   /* work: grid, block, thread, cluster, warp */
+    --hw: #2c6b2b;     /* hardware: GPU, GPC, SM, units */
+    --mem: #786823;    /* storage */
+    --mem-bg: #ebe09e;
+    --sched: #b1259c;  /* assignment: block → SM, warp → scheduler */
+    --sync: #b4410f;   /* barrier synchronization (waiting) */
+    --hatch: #8d9090;
+    --mono: "DM Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d180a; --fg: #ddffdc; --muted: #a2bea0; --line: #2f4c28; --chip: #22401b;
+      --accent: #7fee64; --accent-fg: #0d180a;
+      --work: #47c2ff; --hw: #7fee64; --mem: #fffb2b; --mem-bg: #3a3a10; --sched: #ff6ee0; --sync: #ffa657; --hatch: #4c6947;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d180a; --fg: #ddffdc; --muted: #a2bea0; --line: #2f4c28; --chip: #22401b;
+    --accent: #7fee64; --accent-fg: #0d180a;
+    --work: #47c2ff; --hw: #7fee64; --mem: #fffb2b; --mem-bg: #3a3a10; --sched: #ff6ee0; --sync: #ffa657; --hatch: #4c6947;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 400 14.5px/1.65 var(--mono); }
+  code, .mono { font-family: var(--mono); }
+  code { background: var(--chip); padding: 0 4px; font-size: .95em; }
+  button { font-family: inherit; }
+  button:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: inherit; text-underline-offset: 3px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .label { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .work-t { color: var(--work); } .hw-t { color: var(--hw); } .mem-t { color: var(--mem); }
+  .sched-t { color: var(--sched); } .sync-t { color: var(--sync); }
+
+  .frame { max-width: 1480px; margin: 0 auto; border: 1px solid var(--line); }
+
+  .top { padding: 18px 24px 16px; display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .top > * { grid-column: 1; }
+  .theme { grid-column: 2; grid-row: 1; justify-self: end; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; font: 500 12px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg); background: transparent; border: 1px solid var(--line); cursor: pointer; }
+  .theme:hover { background: var(--chip); }
+  .theme svg { width: 14px; height: 14px; }
+  h1 { margin: 0; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.2; font-weight: 400; letter-spacing: .04em; color: var(--accent); text-wrap: balance; }
+  .lede { margin: 0; max-width: 96ch; color: var(--muted); }
+
+  /* Sticky controls: segmented steps (current = inverted cell), then Back / Next / Reset / cluster switch */
+  .timeline { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); border-block: 1px solid var(--line); padding: 10px 24px; display: grid; gap: 8px; }
+  .tl-row { display: flex; align-items: stretch; gap: 12px; }
+  .btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 14px; font: 500 12px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg); background: transparent; border: 1px solid var(--fg); cursor: pointer; }
+  .btn:hover { background: var(--chip); }
+  .btn:disabled { opacity: .4; cursor: default; background: transparent; }
+  .btn svg { width: 14px; height: 14px; flex: none; }
+  .play[data-mode="pause"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .tl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); flex: 1; min-width: 0; border: 1px solid var(--line); }
+  .tl li { position: relative; min-width: 0; }
+  .tl li + li { border-left: 1px dashed var(--line); }
+  .tl button { width: 100%; height: 100%; display: flex; gap: 8px; align-items: baseline; padding: 7px 10px; background: none; border: 0; color: var(--muted); font-size: 12.5px; line-height: 1.3; text-align: left; cursor: pointer; }
+  .tl button:hover { background: var(--chip); color: var(--fg); }
+  .tl .num { flex: none; font-weight: 500; }
+  .tl .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl li[data-state="done"] button { color: var(--fg); }
+  .tl li[data-state="current"] button { background: var(--accent); color: var(--accent-fg); font-weight: 500; }
+  .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--sched); }
+  @keyframes grow { from { width: 0; } to { width: 100%; } }
+  .ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .ctl-row .pos { font-size: 12px; color: var(--muted); }
+  .ctl-row .keyhint { font-size: 12px; color: var(--muted); margin-right: auto; padding-left: 10px; border-left: 1px dashed var(--line); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px; font: 500 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fg); background: transparent; border: 1px solid var(--line); cursor: pointer; }
+  .switch:hover { background: var(--chip); }
+  .switch .knob { width: 30px; height: 14px; border: 1px solid var(--fg); position: relative; flex: none; }
+  .switch .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; background: var(--fg); transition: transform .2s ease-out; }
+  .switch[aria-checked="true"] .knob { background: var(--work); border-color: var(--work); }
+  .switch[aria-checked="true"] .knob::after { transform: translateX(16px); background: var(--bg); }
+  .switch .state { color: var(--muted); }
+  .tl-now { margin: 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+  .tl-now b { color: var(--fg); font-weight: 500; }
+
+  /* Stage: the diagram leads. A narrow side column keeps the short explanation and the inspector beside it.
+     Below the two-column breakpoint everything stacks: lead, diagram, inspector, full explanation. */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "lead" "fig" "insp" "more"; }
+  .canvas { grid-area: fig; }
+  .lead { grid-area: lead; }
+  .inspect { grid-area: insp; }
+  .more { grid-area: more; }
+  .canvas, .lead, .inspect, .more { padding: 18px 24px; min-width: 0; }
+  .canvas, .inspect, .more { border-top: 1px dashed var(--line); }
+  @media (min-width: 1270px) {
+    .stage { grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "fig lead" "fig insp" "more insp"; grid-template-rows: auto auto 1fr; }
+    .canvas { padding-inline: 20px; border-top: 0; }
+    .lead, .inspect { border-left: 1px dashed var(--line); }
+    .lead { border-top: 0; }
+    .tl-now { display: none; }
+  }
+
+  /* Short, current-step explanation */
+  .lead { display: grid; gap: 10px; align-content: start; }
+  .lead h2 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 500; text-wrap: balance; }
+  .lead h2 .n { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .lead > p { margin: 0; font-size: 14px; line-height: 1.6; }
+  .subnav { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+  @media (max-width: 720px) { .subnav { grid-template-columns: minmax(0, 1fr); } }
+  .subnav[hidden] { display: none; }
+  .subnav .chips { display: flex; flex-wrap: wrap; gap: 0; }
+  .subnav .chips button { min-width: 32px; padding: 3px 8px; font: 500 12.5px var(--mono); color: var(--fg); background: transparent; border: 1px solid var(--line); margin-right: -1px; cursor: pointer; }
+  .subnav .chips button:hover { background: var(--chip); }
+  .subnav .chips button[aria-current="step"] { background: var(--sched); border-color: var(--sched); color: var(--bg); position: relative; }
+  .subnav .now { margin: 0; font-size: 14px; line-height: 1.5; padding: 6px 10px; background: var(--chip); border-left: 2px solid var(--sched); }
+  /* When the inspector is not beside the drawing, a one-line summary of the selection sits above it */
+  .selnote { margin: 0; font-size: 13px; line-height: 1.5; padding: 6px 10px; border: 1px solid var(--line); }
+  .selnote b { font-weight: 500; }
+  .selnote[hidden] { display: none; }
+  @media (min-width: 1270px) { .selnote { display: none; } }
+
+  /* Overview: both hierarchies in two compact rows above the drawing */
+  .canvas { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .overview { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+  .ov-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; }
+  .ov-row .kind { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; min-width: 104px; }
+  .ov-row .kind i { display: inline-block; width: 9px; height: 9px; border: 1.5px solid currentColor; }
+  .ov-row[data-kind="work"] .kind { color: var(--work); }
+  .ov-row[data-kind="hw"] .kind { color: var(--hw); }
+  .ov-row[data-kind="other"] .kind { color: var(--mem); }
+  .crumbs { display: contents; }
+  .sep { color: var(--muted); font-size: 12px; }
+  .crumb { font: 400 12.5px/1.5 var(--mono); color: var(--fg); background: none; border: 1px solid transparent; padding: 0 4px; cursor: pointer; }
+  .crumb:hover { background: var(--chip); }
+  .crumb[data-focus="true"] { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; font-weight: 500; }
+  .crumb[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
+  #diagram { display: block; width: 100%; height: auto; }
+  #diagram.narrow { max-width: 520px; margin: 0 auto; }
+  .status { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; font-size: 13px; color: var(--muted); }
+  .status b { color: var(--fg); font-weight: 500; }
+  .status:empty { display: none; }
+  .legend { flex: none; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend svg { flex: none; overflow: visible; }
+  .legend b { color: var(--fg); font-weight: 500; }
+  .keyrow { display: grid; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  details.fullkey > summary { cursor: pointer; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); width: max-content; }
+  details.fullkey[open] > summary { margin-bottom: 8px; }
+  figcaption { flex: none; font-size: 13px; color: var(--muted); }
+
+  /* SVG styling: 1px outlines, low-opacity fills of the same color, square corners.
+     Minimum text is 12 units; layouts are chosen so a unit is at least one CSS pixel. */
+  svg text { font-family: var(--mono); }
+  .box-w { fill: var(--work); fill-opacity: .06; stroke: var(--work); stroke-width: 1; }
+  .box-hw { fill: var(--hw); fill-opacity: .05; stroke: var(--hw); stroke-width: 1; }
+  .box-mem { fill: var(--mem-bg); stroke: var(--mem); stroke-width: 1; }
+  .box-host { fill: var(--chip); stroke: var(--muted); stroke-width: 1; }
+  .box-sched { fill: var(--sched); fill-opacity: .08; stroke: var(--sched); stroke-width: 1; }
+  .box-sync { fill: var(--sync); fill-opacity: .1; stroke: var(--sync); stroke-width: 1; }
+  .box-plain { fill: var(--bg); stroke: var(--line); stroke-width: 1; }
+  .box-note { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .unit { fill: var(--hw); fill-opacity: .35; stroke: var(--hw); stroke-width: .75; }
+  .chip { fill: var(--bg); stroke: var(--work); stroke-width: 1.25; stroke-dasharray: 3 2; }
+  .chip-done { fill: var(--chip); stroke: var(--muted); stroke-width: 1; }
+  .slot { fill: none; stroke: var(--hw); stroke-width: 1; stroke-dasharray: 2 3; }
+  .thr { fill: var(--work); fill-opacity: .25; stroke: var(--work); stroke-width: 1; }
+  .clu { fill: none; stroke: var(--work); stroke-width: 1.5; stroke-dasharray: 6 3; }
+  .scope { fill: none; stroke: var(--sync); stroke-width: 2.5; }
+  .sel { stroke-width: 2.75; }
+  .dim { opacity: .5; }
+  .hit { cursor: pointer; }
+  .t-hdr { font: 500 12.5px var(--mono); letter-spacing: .08em; }
+  .t-blk { font: 500 13.5px var(--mono); fill: var(--fg); }
+  .t-sub { font: 400 12px var(--mono); fill: var(--muted); }
+  .t-in { font: 400 12px var(--mono); fill: var(--fg); }
+  .t-code { font: 500 12.5px var(--mono); fill: var(--fg); }
+  .c-work { fill: var(--work); } .c-hw { fill: var(--hw); } .c-mem { fill: var(--mem); } .c-muted { fill: var(--muted); }
+  .c-sched { fill: var(--sched); } .c-sync { fill: var(--sync); } .c-fg { fill: var(--fg); }
+  .halo { fill: none; stroke: var(--bg); stroke-width: 5; stroke-linejoin: round; }
+  .a-sched { fill: none; stroke: var(--sched); stroke-width: 1.75; stroke-dasharray: 5 3; }
+  .a-launch { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+  .a-data { fill: none; stroke: var(--mem); stroke-width: 1.75; }
+  .a-no { fill: none; stroke: var(--fg); stroke-width: 1.25; stroke-dasharray: 2 3; }
+  .a-line { fill: none; stroke: var(--line); stroke-width: 1; }
+  .hd-sched { fill: var(--sched); } .hd-launch { fill: var(--muted); } .hd-data { fill: var(--mem); } .hd-fg { fill: var(--fg); }
+  .dot-sched { fill: var(--sched); }
+  .run { stroke: var(--work); stroke-width: 3.5; }
+  .wait { fill: url(#hatch-sync); stroke: var(--sync); stroke-width: 1; }
+  .rel { stroke: var(--sync); stroke-width: 2.25; }
+  .now { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  .tick { stroke: var(--sync); stroke-width: 2; }
+  .lane { fill: var(--work); fill-opacity: .25; stroke: var(--work); stroke-width: .75; }
+  .stamp rect { fill: var(--fg); }
+  .stamp text { font: 500 12px var(--mono); letter-spacing: .08em; fill: var(--bg); }
+  .xmark { stroke: var(--fg); stroke-width: 2; }
+
+  .fade { animation: fade .45s ease-out both; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Inspector: beside the drawing on laptops, right under it on narrower screens */
+  .inspect { display: grid; gap: 10px; align-content: start; }
+  .inspect > p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .picker { display: grid; gap: 4px; }
+  .picker[hidden] { display: none; }
+  .picker .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; }
+  .picker .grp > span { width: 66px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .picker button { padding: 2px 8px; font: 500 12.5px var(--mono); color: var(--fg); background: transparent; border: 1px solid var(--line); cursor: pointer; margin-right: -1px; }
+  .picker button:hover { background: var(--chip); }
+  .picker button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); position: relative; }
+  .card { padding: 10px 12px 12px; display: grid; gap: 6px; align-content: start; border: 1px solid var(--line); }
+  .card[data-kind="work"] { border-color: var(--work); background: color-mix(in srgb, var(--work) 6%, transparent); }
+  .card[data-kind="hw"] { border-color: var(--hw); background: color-mix(in srgb, var(--hw) 6%, transparent); }
+  .card[data-kind="mem"] { border-color: var(--mem); background: color-mix(in srgb, var(--mem-bg) 40%, transparent); }
+  .card[data-kind="op"] { border-color: var(--sched); background: color-mix(in srgb, var(--sched) 6%, transparent); }
+  .card[data-kind="sync"] { border-color: var(--sync); background: color-mix(in srgb, var(--sync) 6%, transparent); }
+  .card[data-kind="host"] { border-color: var(--muted); }
+  .card h3 { margin: 0; font-size: 14px; font-weight: 500; }
+  .card .kindtag { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .card dl { margin: 0; display: grid; gap: 4px; }
+  .card dt { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .card dd { margin: 0 0 4px; font-size: 13px; line-height: 1.5; }
+  .card .view { padding: 6px 8px; margin: 0 0 4px; background: var(--bg); border-left: 2px solid currentColor; }
+  .card .view-dt { color: var(--fg); }
+
+  /* Full explanation: only the current step, collapsed by default */
+  .more details > summary { cursor: pointer; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+  .more details[open] > summary { margin-bottom: 12px; }
+  .more .body { display: grid; gap: 12px; max-width: 86ch; }
+  .more .body p { margin: 0; }
+  .more pre { margin: 0; padding: 10px 12px; background: var(--chip); font: 400 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: break-word; }
+  .more .chk { font-size: 13px; color: var(--muted); padding-top: 10px; border-top: 1px dashed var(--line); }
+  .more .subs { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); list-style: lower-alpha; }
+
+  /* Sections below the stage */
+  .sect { padding: 22px 24px 26px; display: grid; gap: 12px; border-top: 1px solid var(--line); }
+  .sect h2.label { margin-bottom: 2px; }
+  .sect > p { margin: 0; max-width: 96ch; color: var(--muted); }
+  .cmp { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+  .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 8px 12px; border-top: 1px dashed var(--line); }
+  .cmp thead th { border-top: 0; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+  .cmp tbody th { font-weight: 500; color: var(--muted); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; width: 16%; }
+  .cmp .h-sched { color: var(--sched); } .cmp .h-sync { color: var(--sync); }
+  .cmp td.c-s { border-left: 3px dashed var(--sched); } .cmp td.c-y { border-left: 3px solid var(--sync); }
+  @media (max-width: 720px) {
+    .cmp thead { display: none; }
+    .cmp, .cmp tbody, .cmp tr, .cmp th, .cmp td { display: block; width: 100%; }
+    .cmp tbody th { padding: 10px 0 4px; border-top: 1px solid var(--line); width: 100%; }
+    .cmp td { border-top: 0; padding: 4px 0 4px 10px; }
+    .cmp td::before { content: attr(data-h); display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .cmp td.c-s::before { color: var(--sched); } .cmp td.c-y::before { color: var(--sync); }
+  }
+  .notes ul, .sources ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 100ch; color: var(--muted); font-size: 13.5px; }
+  .notes li b, .sources li b { color: var(--fg); font-weight: 500; }
+  details.mm { border: 1px solid var(--line); }
+  details.mm > summary { cursor: pointer; padding: 10px 14px; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--fg); }
+  details.mm[open] > summary { border-bottom: 1px dashed var(--line); }
+  .mm-body { padding: 14px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .mm-body { grid-template-columns: auto minmax(0, 1fr); align-items: start; } }
+  .mm-body p, .mm-body ul { margin: 0; font-size: 13px; color: var(--muted); }
+  .mm-body ul { padding-left: 18px; display: grid; gap: 6px; }
+  .mm-body b { color: var(--fg); font-weight: 500; }
+  .tgrid { display: grid; grid-template-columns: 34px repeat(6, 34px); gap: 0; font-size: 10.5px; }
+  .tgrid .h { color: var(--muted); display: grid; place-items: center; height: 22px; }
+  .tgrid .c { height: 34px; display: grid; place-items: center; border: 1px solid var(--line); margin: -0.5px; }
+  .tgrid .c.in { background: color-mix(in srgb, var(--work) 14%, transparent); color: var(--fg); }
+  .tgrid .c.out { background: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in srgb, var(--hatch) 45%, transparent) 4px 5px); color: var(--muted); }
+  .tgrid .c.bx { border-left: 2px solid var(--work); }
+  .tgrid .c.by { border-top: 2px solid var(--work); }
+  .tkey { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin-top: 8px; max-width: 280px; }
+  .tkey span { display: inline-flex; gap: 6px; align-items: center; }
+  .tkey i { width: 14px; height: 14px; display: inline-block; border: 1px solid var(--line); }
+  .gloss { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 28px; font-size: 13px; }
+  @media (min-width: 900px) { .gloss { grid-template-columns: 1fr 1fr; } }
+  .gloss div { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .gloss dt { font-weight: 500; }
+  .gloss dd { margin: 0; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    body { padding: 0; }
+    .frame { border: 0; }
+    .top, .timeline, .lead, .inspect, .more, .sect { padding-inline: 16px; }
+    .canvas { padding-inline: 14px; }
+    /* Keep the pinned controls short on phones: two rows plus one truncated status line */
+    .timeline { padding-block: 8px; gap: 6px; }
+    .tl-row { gap: 6px; }
+    .btn { padding: 5px 8px; letter-spacing: .06em; gap: 4px; }
+    .play .play-t { display: none; }
+    .tl button { justify-content: center; padding: 7px 2px; }
+    .tl .lbl { display: none; }
+    .ctl-row { flex-wrap: nowrap; gap: 6px; }
+    .ctl-row .pos, .ctl-row .keyhint { display: none; }
+    .switch { padding: 5px 8px; gap: 6px; letter-spacing: .04em; margin-left: auto; }
+    .switch .state { display: none; }
+    .tl-now { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+    .ov-row .kind { min-width: 0; flex-basis: 100%; }
+    .top { grid-template-columns: minmax(0, 1fr); }
+    .theme { grid-column: 1; grid-row: auto; justify-self: start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fade { animation: none; opacity: 1; }
+    .switch .knob::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <p class="label">PMPP ch. 4 · §4.1–4.3 (+ a peek at 4.4) · work, hardware, scheduling, waiting</p>
+    <h1>The work is not the machinery</h1>
+    <p class="lede">Two hierarchies that are easy to blur: the <b class="work-t">work</b> you launch (grid → blocks → threads) is logical; the <b class="hw-t">hardware</b> that runs it (GPU → GPCs → SMs) is physical. <b class="sched-t">Block scheduling</b> connects them at run time. <b class="sync-t">Barrier synchronization</b> is a different thing: threads of one work group waiting for each other.</p>
+    <button type="button" class="theme" id="theme" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 1.5 A5.5 5.5 0 0 1 7 12.5 Z" fill="currentColor"/></svg><span id="theme-t">Light theme</span></button>
+  </header>
+
+  <nav class="timeline" id="timeline" aria-label="Walkthrough steps">
+    <div class="tl-row">
+      <button type="button" class="btn play" id="play"><span id="play-icon" aria-hidden="true"></span><span class="play-t" id="play-t">Play</span></button>
+      <ol class="tl" id="steps"></ol>
+    </div>
+    <div class="ctl-row">
+      <button type="button" class="btn" id="back"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M10 2 L4 7 L10 12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Back</button>
+      <button type="button" class="btn" id="next">Next<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2 L10 7 L4 12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+      <button type="button" class="btn" id="reset">Reset</button>
+      <span class="pos" id="pos"></span>
+      <span class="keyhint">Keys ← → step through every state; any key pauses Play</span>
+      <button type="button" class="switch" id="cluster" role="switch" aria-checked="false" aria-label="Cluster mode (compute capability 9.0 and newer)"><span class="knob" aria-hidden="true"></span><span>Clusters</span><span class="state" id="cluster-state">off · cc 9.0+ only</span></button>
+    </div>
+    <p class="tl-now" id="tl-now" aria-hidden="true"></p>
+  </nav>
+  <p class="sr" aria-live="polite" id="announce"></p>
+
+  <div class="stage">
+    <figure class="canvas" aria-labelledby="diagram-label">
+      <div class="overview" id="overview" aria-label="Both hierarchies. Underlined items are this step's focus; the inverted item is selected."></div>
+      <div class="subnav" id="subnav">
+        <div class="chips" id="sub-chips" role="group" aria-label="States in this step"></div>
+        <p class="now" id="sub-now"></p>
+      </div>
+      <p class="selnote" id="selnote" hidden></p>
+      <svg id="diagram" role="img" aria-labelledby="diagram-label" xmlns="http://www.w3.org/2000/svg"></svg>
+      <p id="diagram-label" class="sr"></p>
+      <ul class="status" id="status" aria-label="Thread status at this moment"></ul>
+      <div class="keyrow">
+        <ul class="legend" id="legend" aria-label="Key for this view"></ul>
+        <details class="fullkey"><summary>Full key</summary><ul class="legend" id="legend-all" aria-label="Full key"></ul></details>
+      </div>
+      <figcaption id="figcap"></figcaption>
+    </figure>
+
+    <section class="lead" aria-label="This step, in short">
+      <h2 id="lead-h"></h2>
+      <p id="lead-p"></p>
+    </section>
+
+    <section class="inspect" aria-labelledby="inspect-h">
+      <h2 class="label" id="inspect-h">Inspect · click anything; described <i>in this view</i></h2>
+      <div id="card" aria-live="polite"></div>
+      <div class="picker" id="picker" role="group" aria-label="Select an item shown in this view"></div>
+    </section>
+
+    <section class="more" aria-label="Full explanation of this step">
+      <details id="more-d"><summary id="more-s">Full explanation of this step</summary><div class="body" id="more-body"></div></details>
+    </section>
+  </div>
+
+  <section class="sect" aria-labelledby="cmp-h">
+    <h2 class="label" id="cmp-h">Scheduling ≠ synchronization</h2>
+    <p>Both involve "when does a thread run", which is why they get mixed up. They answer different questions.</p>
+    <table class="cmp">
+      <thead><tr><th scope="col"><span class="sr">Aspect</span></th><th scope="col" class="h-sched">Block scheduling · <i>where can this block run?</i></th><th scope="col" class="h-sync">Barrier synchronization · <i>who must I wait for?</i></th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Who does it</th><td class="c-s" data-h="Block scheduling">The GPU's block-scheduling machinery, at run time. Your code does not call it and cannot pick the SM.</td><td class="c-y" data-h="Barrier synchronization">Your kernel code, by calling <code>__syncthreads()</code> or, with clusters, <code>cluster.sync()</code>.</td></tr>
+        <tr><th scope="row">Unit</th><td class="c-s" data-h="Block scheduling">A whole block goes to one SM. With clusters, a whole cluster goes to one GPC.</td><td class="c-y" data-h="Barrier synchronization">The barrier's scope. <code>__syncthreads()</code>: one block. <code>cluster.sync()</code>: every block in one cluster.</td></tr>
+        <tr><th scope="row">Guarantees</th><td class="c-s" data-h="Block scheduling">All of a block's threads are resident on the same SM together, so they can share that block's shared memory and use its barrier.</td><td class="c-y" data-h="Barrier synchronization"><code>__syncthreads()</code>: no thread of the block passes until every non-exited thread of that block has reached the same call, and memory accesses before it are ordered before those after it among the participating threads (NVIDIA §5.4.4.1). <code>cluster.sync()</code>: all threads of the cluster's blocks have arrived and, per PMPP, their DSMEM operations are complete; NVIDIA adds that all the cluster's blocks have started.</td></tr>
+        <tr><th scope="row">Does not mean</th><td class="c-s" data-h="Block scheduling">Every thread runs an instruction at the same instant, each thread gets its own core, blocks on one SM are synchronized, or blocks finish in order.</td><td class="c-y" data-h="Barrier synchronization"><code>__syncthreads()</code> says nothing about other blocks, even ones on the same SM. <code>cluster.sync()</code> spans blocks, but only those in its own cluster; other clusters are not included. Neither is an "SM barrier" or a "GPC barrier". A grid-wide barrier is a separate Cooperative Groups feature that needs a cooperative launch.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sect" aria-labelledby="mm-h">
+    <h2 class="label" id="mm-h">Your matmul on this map (optional)</h2>
+    <details class="mm">
+      <summary>Open: <code>pmpp/matmul.cu</code> with a 5×4 output and 3×3 blocks</summary>
+      <div class="mm-body">
+        <div>
+          <div class="tgrid" id="tgrid" role="img" aria-label="A 6 by 6 arrangement of launched threads in 4 blocks of 3 by 3. The top-left 5 rows by 4 columns are in bounds, 20 threads. The other 16 are excluded by the bounds check."></div>
+          <div class="tkey"><span><i style="background: color-mix(in srgb, var(--work) 14%, transparent)"></i>writes one <code>out</code> element</span><span><i style="background: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in srgb, var(--hatch) 45%, transparent) 4px 5px)"></i>fails the bounds check, writes nothing</span><span>(x,y) = <code>blockIdx</code> of the 3×3 block starting there · r = <code>row_index</code>, c = <code>col_index</code></span></div>
+        </div>
+        <div style="display:grid; gap:10px">
+          <p><b>The work side.</b> <code>matmul()</code> launches <code>gridDim = (2, 2)</code> and <code>blockDim = (3, 3)</code>: four blocks of nine threads, <b>36 threads</b>. Each thread computes <code>row_index</code> from <code>.y</code> and <code>col_index</code> from <code>.x</code>. <b>20 threads</b> pass <code>row_index &lt; 5 &amp;&amp; col_index &lt; 4</code> and each writes one element of <code>out_d</code>. The other <b>16</b> skip the body. Per block: (0,0) 9 in bounds, (1,0) 3, (0,1) 6, (1,1) 2.</p>
+          <ul>
+            <li><b>Rows and columns of <code>out</code> are not hardware positions.</b> The 6×6 picture is your index space. Nothing in the chip is arranged in rows of 3 threads.</li>
+            <li><b>Placement isn't drawn because your code doesn't decide it.</b> Each of the four blocks goes whole to some SM at run time. Two might share an SM or each get their own, and that can change from run to run. Any placement you see in the map above is illustrative.</li>
+            <li><b>Your kernel needs no barrier.</b> Each thread reads <code>M_d</code> and <code>N_d</code> from global memory and writes its own <code>out_d</code> element. No thread reads a value another thread wrote, there is no <code>__shared__</code> array, and there are no clusters. Adding <code>__syncthreads()</code> would not fix or improve anything here.</li>
+            <li><b>Where your data lives:</b> <code>M_d</code>, <code>N_d</code> and <code>out_d</code> point into global memory (off-chip DRAM). <code>accumulator</code>, <code>row_index</code>, <code>col_index</code> and <code>k</code> are per-thread automatic variables, which PMPP §5.2 says normally live in registers.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="sect notes" aria-labelledby="notes-h">
+    <h2 class="label" id="notes-h">What the picture is careful about</h2>
+    <ul>
+      <li><b>Fictional hardware.</b> 2 GPCs × 2 SMs, 2 resident blocks per SM in step 3, and every block placement are made up for teaching. They are not a device spec. Real numbers on this page are labeled with their source: H100 has 132 SMs in 8 GPCs with 128 streaming processors per SM (PMPP p. 68), split into 4 processing blocks of 32 (PMPP p. 76). The warp size is 32.</li>
+      <li><b>Arrows mean different things.</b> A box inside a box means "part of". A dashed magenta arrow means "assigned to by the scheduler". A solid ochre arrow means "reads or writes". Hatching means "waiting".</li>
+      <li><b>GPC is not a thread-block cluster.</b> A GPC is a hardware group of SMs. PMPP spells it GPU Processing Cluster and NVIDIA's guide spells it Graphics Processing Cluster. A thread-block cluster is an optional group of <i>blocks</i> in your launch (compute capability 9.0+, starting with Hopper) that the hardware places inside one GPC. GPCs as a hardware grouping are older than that feature. PMPP's wording ("starting with the Hopper architecture, the SMs … are grouped into GPCs") can be read otherwise. I have not checked the GPC history against a primary NVIDIA document.</li>
+      <li><b>The runtime is software on the host.</b> Your CPU code calls the launch, and the CUDA runtime and driver hand it to the GPU. The CPU does not send threads one at a time. Assigning blocks to SMs happens on the GPU side; NVIDIA's 2009 Fermi whitepaper calls that unit the GigaThread global scheduler. PMPP calls the whole system the "CUDA run-time system".</li>
+      <li><b>Three different memory scopes.</b> Registers hold one thread's private variables. Shared memory is allocated per block, carved out of the SM's on-chip storage, which also serves as L1 cache. Global memory is off-chip DRAM that every SM can reach. "Local memory" is something else again: private per-thread storage the compiler uses for things like automatic arrays (PMPP §5.2). It is not another name for the SM's L1/shared storage.</li>
+    </ul>
+  </section>
+
+  <section class="sect" aria-labelledby="gl-h">
+    <h2 class="label" id="gl-h">Glossary</h2>
+    <dl class="gloss" id="gloss"></dl>
+  </section>
+
+  <section class="sect sources" aria-labelledby="src-h">
+    <h2 class="label" id="src-h">Sources and what was checked</h2>
+    <ul>
+      <li><b>PMPP 5th ed., ch. 4</b>: §4.1 Architecture of a modern GPU (p. 68, Fig. 4.1), §4.2 Thread block scheduling (pp. 69–70, Fig. 4.2), §4.3 Synchronization and transparent scalability (pp. 70–74, Figs. 4.3–4.5), §4.4 Warps and SIMD hardware (pp. 74–76). <b>Ch. 5 §5.2</b> (p. 102–103): distributed shared memory, scopes and lifetimes. Read for this page; printed page numbers.</li>
+      <li><b>NVIDIA CUDA Programming Guide</b>, <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html#gpu-hardware-model">§1.2.2 GPU Hardware Model</a>: SMs grouped into GPCs; all threads of a block in one SM; blocks "may be executed in any order"; clusters on compute capability 9.0+ scheduled together on one GPC; warps of 32. <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html#on-chip-memory-in-gpus">§1.2.3.3 On-Chip Memory</a>: register file, unified data cache providing shared memory and L1, L2 shared by all SMs.</li>
+      <li><b>NVIDIA</b>, <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html#distributed-shared-memory">§2.3.3.8 Distributed Shared Memory</a>: read/write/atomics on cluster blocks' shared memory; all blocks must exist; <code>cluster.sync()</code> to know they've started; finish remote accesses before a block exits. <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html#shared-memory">§2.3.3.2 Shared Memory</a>: block scope, physically on the SM.</li>
+      <li><b>NVIDIA</b>, <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html#thread-block-synchronization-functions">§5.4.4.1 Thread Block Synchronization Functions</a>: waits for "all non-exited threads in the thread block"; provides memory ordering among participating threads; allowed in conditional code only if the condition is uniform across the block.</li>
+      <li><b>NVIDIA</b>, <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html">§4.4 Cooperative Groups</a>: <code>this_cluster()</code> requires compute capability 9.0 or greater; synchronizing the entire grid requires a cooperative launch (<code>cudaLaunchCooperativeKernel</code>).</li>
+      <li><b>NVIDIA Fermi compute architecture whitepaper</b> (2009): "The GigaThread global scheduler distributes thread blocks to SM thread schedulers." Used only for "block scheduling happens on the GPU side".</li>
+      <li><b>Not checked against a primary source:</b> the history of GPCs before Hopper (only secondary write-ups of NVIDIA's GF100 material were found) and any specific maximum cluster size. NVIDIA's guide says the maximum "is hardware dependent and varies between devices", so this page gives no number.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ model
+  // Six blocks in a 3×2 grid. B(n) has blockIdx (n % 3, floor(n / 3)).
+  // Optional clusters use clusterDim (1, 2): cluster c = { B c, B c+3 }.
+  // In the map views, the SM each block lands on is a made-up run-time snapshot, different per mode on purpose.
+  // Other views (scheduling demo, barrier, warps) have their own state; the inspector always reads the active view.
+  const NB = 6;
+  const SM_GPC = [0, 0, 1, 1];
+  const PLACE = { off: [0, 1, 2, 3, 2, 0], on: [0, 2, 0, 1, 2, 1] };
+  const clusterOf = n => n % 3;
+  const members = c => [c, c + 3];
+  const bIdx = n => `(${n % 3}, ${Math.floor(n / 3)})`;
+
+  let cluster = false;
+  const place = () => PLACE[cluster ? 'on' : 'off'];
+  const smOf = n => place()[n];
+  const blocksOn = k => [...Array(NB).keys()].filter(n => smOf(n) === k);
+  const smsIn = g => [0, 1, 2, 3].filter(k => SM_GPC[k] === g);
+  const clustersIn = g => [0, 1, 2].filter(c => SM_GPC[smOf(c)] === g);
+  const list = bs => bs.map(b => 'B' + b).join(', ');
+
+  // ------------------------------------------------------------------ steps
+  const STEPS = [
+    {
+      short: 'Two maps', title: 'The work is not the machinery', def: null, legend: ['contain', 'sched', 'chip', 'zoom'],
+      focus: ['launch', 'grid', 'block', 'thread', 'gpu', 'gpc', 'sm', 'sched'],
+      lead: 'Left: the <b class="work-t">work</b> your launch describes. Right: the <b class="hw-t">chip</b> that runs it. The only link is <b class="sched-t">block scheduling</b>: each whole block goes to one SM at run time. A thread is not a hardware box, and a GPC is not a thread-block cluster.',
+      body: `
+        <p>Read the drawing as two maps. On the <b class="work-t">work</b> side is what your launch describes: one kernel launch creates one <b>grid</b>, the grid is made of <b>blocks</b>, and each block is made of <b>threads</b>. On the <b class="hw-t">hardware</b> side is the chip that runs it: a GPU contains <b>GPCs</b>, each GPC contains <b>SMs</b>, and each SM contains control and scheduling logic, compute units, and on-chip storage. Memory controllers connect the chip to <b>global memory</b>, the off-chip DRAM. The inside of one SM is drawn once, in the panel under the grid, instead of four times.</p>
+        <p>A <b>thread</b> is one running instance of your kernel function, with its own <code>threadIdx</code> and its own registers. It is not a hardware box. The small squares inside an SM are <b>streaming processors</b> (NVIDIA also calls them CUDA cores). They are compute hardware that executes instructions for whichever threads get scheduled. No thread owns one.</p>
+        <p>The only link between the maps is <b class="sched-t">block scheduling</b>, the dashed magenta arrows. At run time the GPU assigns each whole block to one SM. A grid is not a region of the chip, and a block is not an SM.</p>
+        <p><b>SM</b> = Streaming Multiprocessor. <b>GPC</b> = GPU Processing Cluster (PMPP) or Graphics Processing Cluster (NVIDIA): a hardware group of SMs. It is <i>not</i> the optional thread-block cluster in step 5, which is a group of blocks.</p>`,
+      chk: 'Try it: select B3, then SM 3, then the grid. Each card says whether the thing is work, hardware, storage or an operation.'
+    },
+    {
+      short: 'One block', title: 'Where does one block go?', def: 'block:4', legend: ['sched', 'chip', 'contain'],
+      focus: ['block', 'sm', 'sched'],
+      lead: 'The magenta arrow assigns a <b>whole block</b> to one SM. Several blocks can be resident on one SM; that is neither "running at the same instant" nor synchronized. Placement is a run-time snapshot, not chosen by <code>blockIdx</code>.',
+      body: `
+        <p>Select a block. The dashed magenta arrow is <b class="sched-t">block scheduling</b>: the GPU assigns the whole block, every one of its threads, to <b>one SM</b>. PMPP puts it this way: threads are assigned to SMs block by block.</p>
+        <p>An SM can hold <b>more than one block at once</b> when it has enough resources (registers, shared memory, thread slots) for all of them. Select SM 2: in this snapshot it holds two blocks.</p>
+        <p><b>Resident</b> means the block's threads have been given space on that SM and can be scheduled there. It does not mean they all execute an instruction at the same instant, and it does not give each thread its own compute unit. Two blocks on the same SM are <b>not synchronized</b> with each other.</p>
+        <p>Placement is a run-time snapshot chosen by the hardware. You don't choose it, <code>blockIdx</code> doesn't determine it, and it can differ between runs and devices. Turn cluster mode on and off to see a different snapshot.</p>`,
+      chk: 'Notice: the arrow says "assigned to". It is not a wait, and it is not a data path.'
+    },
+    {
+      short: 'More work', title: 'What if there is more work than room?', def: 'sched', legend: ['sched', 'chip', 'done', 'free'],
+      focus: ['block', 'sm', 'sched'],
+      lead: 'A <b>fictional</b> 2-SM GPU, <b>assuming</b> 2 blocks fit per SM. Blocks wait, become resident when a room frees up, and finish in no fixed order. The same kernel runs unchanged on more SMs. No clusters here.',
+      body: `
+        <p>This is a deliberately tiny, <b>fictional</b> GPU with 2 SMs, and we <b>assume</b> each SM has room for 2 blocks at a time. That 2 is an invented resource limit for this demo. The real number depends on the device and on how many registers, how much shared memory and how many threads each block needs (PMPP §4.6–4.7).</p>
+        <p>Six independent blocks wait. The scheduler fills free slots. When a block completes, its slot frees up and a waiting block can start there. The order isn't fixed and blocks don't finish in lockstep.</p>
+        <p><b>Transparent scalability:</b> under the same assumption, a 4-SM version has room for all six at once. The kernel code didn't change, only how many blocks run side by side. This works because blocks don't wait for each other.</p>
+        <p><b>Waves</b> are a way of counting: blocks ÷ blocks that fit at once. Here that's 6 ÷ 4 = 1.5 waves. A wave is not a batch that starts and stops together: B4 starts while B0 and B1 are still running.</p>
+        <p>This demo is about independent blocks, so it ignores cluster mode. The inspector reports each block's state in the current step: waiting, resident on SM 0 or SM 1, or completed.</p>`,
+      subs: [
+        'Launch: six independent blocks wait. No SM has started any of them.',
+        'Free slots fill: B0, B1 → SM 0 and B2, B3 → SM 1. B4 and B5 wait because, under our 2-per-SM assumption, there is no room.',
+        'B2 finishes first. Nothing forced that order.',
+        'B2’s slot is free, so B4 is scheduled onto SM 1 while B0, B1 and B3 keep running.',
+        'B0 finishes, and B5 takes its slot on SM 0.',
+        'B1 and B3 finish.',
+        'B4 and B5 finish. The kernel is done when all of its blocks are.'
+      ],
+      chk: 'Ask yourself: why must blocks not depend on each other for this to work on any number of SMs?'
+    },
+    {
+      short: 'Barrier', title: 'Waiting together is a different operation', def: 'sync', legend: ['run', 'wait', 'release', 'scopebar'],
+      focus: ['block', 'thread', 'sync'],
+      lead: '<code>__syncthreads()</code>: each thread waits until every non-exited thread of <b>its own block</b> reaches the same call. Block B shares the SM but is not in A’s barrier. The barrier also orders memory for A’s threads.',
+      code: '__shared__ float tile[256];        // one copy per block; blockDim.x == 256\nint t = threadIdx.x;\ntile[t] = in[blockIdx.x * 256 + t];  // phase 1: write own slot\n__syncthreads();                     // wait for this block\nout[blockIdx.x * 256 + t] = tile[(t + 1) % 256];  // phase 2: read a neighbor\'s slot',
+      body: `
+        <p><b class="sync-t">Barrier synchronization</b> is something your code asks for. Block scheduling is something the GPU does. When a thread reaches <code>__syncthreads()</code>, it waits there until every non-exited thread of the <b>same block</b> has reached that same call. Then they all continue.</p>
+        <p>The chart shows four of Block A's threads. That's a representative handful: a real block has <code>blockDim</code> threads. They reach the call at different times, and the early ones wait (hatched).</p>
+        <p><b>Scope: one block.</b> Not the SM, not the GPC, not the grid. Block B shares an SM with A in this example but is not part of A's barrier. It passes its own barrier and keeps going while A is still waiting.</p>
+        <p>The barrier also <b>orders memory</b>: for the participating threads, accesses before it (here, the writes to <code>tile</code>) are ordered before accesses after it. That's what makes reading a neighbor's slot safe.</p>
+        <p><b>Rule:</b> every thread of the block must reach the same <code>__syncthreads()</code>. It may sit inside an <code>if</code> only when the condition comes out the same for the whole block. Otherwise execution may hang or misbehave.</p>`,
+      subs: [
+        'Phase 1: Block A’s threads write their tile slots. Block B runs its own code.',
+        'A·t2, then A·t0, reach __syncthreads() and wait. Same call, different times.',
+        'A·t3 arrives and waits. Meanwhile Block B’s threads clear their own barrier and continue. A’s barrier doesn’t hold B, and B doesn’t release A.',
+        'A·t1, the last of Block A, arrives. Every non-exited thread of A has reached the call, so all of A is released.',
+        'Phase 2: A’s threads read their neighbors’ slots. The barrier ordered the phase-1 writes before these reads.'
+      ],
+      chk: 'Check: which threads does Block A’s barrier wait for? Only Block A’s, wherever any other block happens to be resident.'
+    },
+    {
+      short: 'Clusters', title: 'An optional group of blocks', def: 'cluster:0', forceCluster: true, legend: ['clu', 'sched', 'chip'],
+      focus: ['cluster', 'block', 'gpc', 'sm', 'csync'],
+      lead: 'Optional, cc 9.0+: a <b>cluster</b> groups blocks. Guaranteed: its blocks are co-scheduled in <b>one GPC</b>; which SMs is up to the hardware. <code>cluster.sync()</code> waits for every block of the cluster, not just one.',
+      code: '// launched with cluster dims (1, 2, 1): two blocks per cluster\nnamespace cg = cooperative_groups;\ncg::cluster_group cluster = cg::this_cluster();\n__syncthreads();   // waits for: this block\ncluster.sync();    // waits for: every block in this cluster',
+      body: `
+        <p>On GPUs of <b>compute capability 9.0 and higher</b> (starting with Hopper) you can launch with <b>thread-block clusters</b>, which are groups of blocks inside the grid. Here the cluster shape is (1, 2), so each column of two blocks is one cluster. Everything in steps 1–4 still holds without clusters, and turning cluster mode off brings you back to that model.</p>
+        <p><b>The guarantee:</b> all blocks of a cluster are scheduled at the same time onto SMs of <b>one GPC</b>. Which SMs is up to the hardware. In this snapshot C0 is spread over SM 0 and SM 1, while C1 has both of its blocks on SM 2. A cluster is not an SM, doesn't fill its GPC (C0 and C2 share GPC 0), and doesn't need one block per SM.</p>
+        <p><b class="sync-t">Cluster-wide waiting</b> uses Cooperative Groups: <code>cluster.sync()</code>. It's a different barrier from <code>__syncthreads()</code>: it waits for all threads in all the cluster's blocks, and it has no effect on other clusters. The maximum cluster size depends on the device.</p>`,
+      chk: 'Try it: select C1. Both of its blocks map into GPC 1, and in this snapshot both sit on the same SM.'
+    },
+    {
+      short: 'DSMEM', title: 'What is distributed shared memory?', def: 'dsmem', forceCluster: true, legend: ['data', 'no', 'contain'],
+      focus: ['cluster', 'block', 'smem', 'dsmem', 'gmem'],
+      lead: 'Shared memory is per block. <b>DSMEM</b> lets a thread use the shared memory of another block in <b>its own cluster</b>, across SMs, only while that block exists. It is not global memory or a chip-wide pool.',
+      body: `
+        <p><b>Ordinary shared memory</b> is a per-block scratchpad. Each block gets its own segment, carved out of its SM's on-chip storage (the same physical storage that also serves as L1 cache). Only that block's threads can use it, even when another block sits on the same SM.</p>
+        <p><b>Distributed shared memory</b> (DSMEM) is the cluster exception. A thread can read, write or do atomics on the shared-memory segment of <b>another block in its own cluster</b>, even one on a different SM, by getting a pointer with <code>cluster.map_shared_rank(ptr, rank)</code>.</p>
+        <p>It is not global memory. It is not a new chip-wide pool, and it is not every SM's memory merged together. It is the member blocks' own segments, made reachable to each other. So the total is (blocks per cluster) × (per-block shared memory).</p>
+        <p><b>Lifetime:</b> a segment exists only while its block exists. Call <code>cluster.sync()</code> before the first remote access so you know every block in the cluster has started. Before a block exits, make sure the others have finished touching its segment, typically with another <code>cluster.sync()</code>.</p>`,
+      subs: [
+        'Ordinary shared memory: each block uses only its own segment. B0 cannot use B2’s, even on the same SM.',
+        'Cluster C0 (B0 + B3): each can reach the other’s segment, across SMs, inside one GPC. B2 is in a different cluster, so it stays out of reach.',
+        'Lifetime: cluster.sync() before the first remote access and again before exit, so no segment is used before its block starts or after it ends.'
+      ],
+      chk: 'Notice: the global-memory path (bottom) is drawn separately. DSMEM traffic does not go out to DRAM.'
+    },
+    {
+      short: 'Warps', title: 'Inside an SM: warps (a peek at §4.4)', def: 'warp', legend: ['sched', 'chip', 'lane'],
+      focus: ['warp', 'thread', 'sm', 'ctrl', 'sp'],
+      lead: 'Inside an SM, a resident block is split into <b>warps</b> of 32 threads that warp schedulers issue. Lanes are logical positions, not dedicated cores. Simplified drawing, not a floorplan.',
+      body: `
+        <p>Once a block is resident on an SM, the SM splits it into <b>warps</b> of 32 threads (the warp size on the NVIDIA GPUs discussed here). Threads 0–31 form warp 0, threads 32–63 form warp 1, and so on. Multi-dimensional blocks are flattened in row-major order first. The 32 positions are <b>lanes</b>, numbered 0–31.</p>
+        <p>A warp is what the SM's <b>warp schedulers</b> pick from. Conceptually, a warp's active threads run the same instruction together. This is called SIMT (single instruction, multiple threads). NVIDIA notes that actual hardware execution can differ from this lockstep picture.</p>
+        <p>Lanes are logical positions, not 32 dedicated cores. How many compute units carry out one warp instruction, and over how many clock cycles, depends on the hardware and the instruction. Compute units don't belong to a warp. The scheduler issues different warps over time.</p>
+        <p>PMPP's H100 example splits an SM into 4 processing blocks of 32 streaming processors. This drawing shows fewer squares and is <b>simplified</b>, not a floorplan. The second block drawn is whichever block shares B0's SM in the current snapshot.</p>`,
+      chk: 'This is secondary for §4.3. The main idea to keep: blocks go to SMs, then warps are scheduled inside an SM.'
+    }
+  ];
+  const NSUB = STEPS.map(s => s.subs ? s.subs.length : 1);
+
+  // ------------------------------------------------------------------ per-view state helpers
+  // Step 3: scheduling demo on a small fictional GPU (independent blocks, no clusters)
+  const SIM = [
+    { slots: [[null, null], [null, null]], wait: [0, 1, 2, 3, 4, 5], done: [], moved: [] },
+    { slots: [[0, 1], [2, 3]], wait: [4, 5], done: [], moved: [0, 1, 2, 3] },
+    { slots: [[0, 1], [null, 3]], wait: [4, 5], done: [2], moved: [] },
+    { slots: [[0, 1], [4, 3]], wait: [5], done: [2], moved: [4] },
+    { slots: [[5, 1], [4, 3]], wait: [], done: [2, 0], moved: [5] },
+    { slots: [[5, null], [4, null]], wait: [], done: [2, 0, 1, 3], moved: [] },
+    { slots: [[null, null], [null, null]], wait: [], done: [2, 0, 1, 3, 4, 5], moved: [] }
+  ];
+  function simState(b) {
+    const s = SIM[sub];
+    if (s.wait.includes(b)) return { st: 'waiting' };
+    for (let k = 0; k < 2; k++) { const j = s.slots[k].indexOf(b); if (j >= 0) return { st: 'resident', k, j, moved: s.moved.includes(b) }; }
+    return { st: 'done' };
+  }
+  const simOn = k => SIM[sub].slots[k].filter(b => b !== null);
+  // Step 4: barrier timelines
+  const TIMES = [20, 45, 66, 80, 100];
+  const AR = { A: [40, 78, 25, 55], B: [58, 64] };
+  function thrStatus(blk, i) {
+    const T = TIMES[sub], arr = AR[blk][i], rel = Math.max(...AR[blk]);
+    return T <= arr ? 'running before the barrier' : T <= rel ? 'waiting at __syncthreads()' : 'past the barrier';
+  }
+  // Step 7: the second block drawn is whatever shares B0's SM in the current snapshot
+  const warpSM = () => smOf(0);
+  const warpOther = () => blocksOn(warpSM()).find(b => b !== 0);
+  // Step 6 draws GPC 0 of the cluster-mode snapshot
+  const DS_BLOCKS = [0, 2, 3, 5];
+  const mapStep = () => [1, 2, 5].includes(step);
+  const clusterView = () => cluster && [1, 2, 5, 6].includes(step);
+
+  // ------------------------------------------------------------------ entity cards (always read the active view)
+  const KIND = {
+    work: 'Work · logical', hw: 'Hardware · physical', mem: 'Storage',
+    op: 'Operation · scheduling', sync: 'Operation · synchronization', host: 'Host software'
+  };
+  const NOT_DRAWN = 'Not drawn in this view.';
+  function viewOf(id) {
+    const [base, arg] = id.split(':'); const n = Number(arg);
+    if (base === 'block' && !isNaN(n)) {
+      if (mapStep()) return `Resident on SM ${smOf(n)} in GPC ${SM_GPC[smOf(n)]}. Illustrative snapshot, chosen by the GPU at run time, not by <code>blockIdx</code>.`;
+      if (step === 3) {
+        const s = simState(n);
+        if (s.st === 'waiting') return 'Waiting. Not assigned to any SM yet, so it holds no SM resources.';
+        if (s.st === 'resident') return `Resident on SM ${s.k} of the small fictional GPU (room ${s.j + 1} under the 2-per-SM assumption).${s.moved ? ' Just scheduled in this state.' : ''}`;
+        return 'Completed. Its room was freed for a waiting block.';
+      }
+      if (step === 6) return cluster ? (DS_BLOCKS.includes(n) ? `Drawn: resident on SM ${smOf(n)} in GPC 0 (cluster-mode snapshot), with its own shared-memory segment.` : `Not drawn here. In this snapshot it is on SM ${smOf(n)} in GPC 1.`) : 'Cluster mode is off, so this view has nothing to draw.';
+      if (step === 7) return n === 0 ? `Resident on SM ${warpSM()} (snapshot). Split into warp 0 and warp 1, drawn on the left.` : n === warpOther() ? `Also resident on SM ${warpSM()} in this snapshot. Its two warps wait in partitions 2 and 3.` : NOT_DRAWN;
+      return NOT_DRAWN;
+    }
+    if (base === 'sm') {
+      if (mapStep()) { const bs = blocksOn(n); return bs.length ? `Resident now (snapshot): ${list(bs)}.` : 'No block resident in this snapshot.'; }
+      if (step === 3) return n < 2 ? (simOn(n).length ? `Resident now: ${list(simOn(n))}. Free rooms: ${2 - simOn(n).length} of the assumed 2.` : 'No block resident in this state. Both assumed rooms are free.') : 'Not part of this demo: the small fictional GPU has only SM 0 and SM 1. The bigger comparison GPU is a separate, static picture.';
+      if (step === 4) return 'Not drawn: Blocks A and B share one SM in this example. Nothing synchronizes "the SM" itself.';
+      if (step === 6) return cluster && n < 2 ? `Drawn, holding ${list(blocksOn(n))}.` : NOT_DRAWN;
+      if (step === 7) return n === warpSM() ? `Drawn on the right (simplified), holding B0 and B${warpOther()}.` : NOT_DRAWN;
+    }
+    if (base === 'gpc') {
+      if (mapStep()) return `Contains SM ${smsIn(n).join(' and SM ')}.` + (cluster ? ` Clusters co-scheduled here now: ${clustersIn(n).map(c => 'C' + c).join(', ') || 'none'}.` : '');
+      if (step === 6 && cluster) return n === 0 ? 'Drawn: the GPC shown, holding clusters C0 and C2.' : NOT_DRAWN;
+      return NOT_DRAWN;
+    }
+    if (base === 'cluster') {
+      if (!cluster) return 'Cluster mode is off, so this launch has no clusters.';
+      if (!clusterView()) return 'Not used in this view. This demonstration involves no clusters.';
+      const ms = members(n);
+      return `Co-scheduled in GPC ${SM_GPC[smOf(ms[0])]} (guaranteed). B${ms[0]} → SM ${smOf(ms[0])}, B${ms[1]} → SM ${smOf(ms[1])} (illustrative).`;
+    }
+    if (base === 'thread') {
+      if (step === 4) return 'The chart shows 4 of Block A’s threads and 2 of Block B’s. Each one’s state right now is listed under the chart.';
+      const b = isNaN(n) ? 0 : n;
+      if (mapStep()) return `Its block B${b} is resident on SM ${smOf(b)} (snapshot).`;
+      if (step === 3) { const s = simState(b); return s.st === 'resident' ? `Its block B${b} is resident on SM ${s.k}, so it can be scheduled there.` : s.st === 'waiting' ? `Its block B${b} is waiting, so this thread has not started.` : `Its block B${b} has completed, so this thread has finished.`; }
+      if (step === 7) return 'Each tick in the warp rows is one thread’s lane.';
+    }
+    return null;
+  }
+  function entity(id) {
+    const [base, arg] = id.split(':');
+    const n = Number(arg);
+    const cv = clusterView();
+    switch (base) {
+      case 'launch': return { kind: 'host', name: 'Kernel launch', rows: [
+        ['What it is', 'Host code says <code>kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(args)</code>. That is a request, not a loop over threads.'],
+        ['Contains', 'The launch configuration: grid size, block size, optionally cluster size.'],
+        ['Maps to', 'One grid of threads on the GPU. The CUDA runtime and driver hand the launch to the GPU; the GPU side assigns blocks to SMs.']] };
+      case 'runtime': return { kind: 'host', name: 'CUDA runtime + driver', rows: [
+        ['What it is', 'Software on the host (CPU side) that your CUDA calls go through: allocation, copies, launches.'],
+        ['Contains', 'No SMs and no threads. It is not a physical enclosure.'],
+        ['Maps to', 'Turns your launch into a request the GPU can run. Block-to-SM assignment then happens on the GPU side.']] };
+      case 'grid': return { kind: 'work', name: 'Grid', rows: [
+        ['What it is', 'All the threads of one kernel launch, organized as blocks. <code>gridDim</code> is its logical shape, here (3, 2).'],
+        ['Contains', `6 blocks${cv ? ', grouped into 3 clusters of 2' : ''}.`],
+        ['Maps to', 'Nothing fixed. A grid is not a region of the chip. Its blocks are spread over whatever SMs have room, over time.'],
+        ['Waits with', 'No automatic grid-wide waiting. A grid-wide barrier exists in Cooperative Groups but needs a cooperative launch (PMPP ch. 18).']] };
+      case 'block': {
+        if (arg === 'A' || arg === 'B') {
+          const waiting = AR[arg].filter((_, i) => thrStatus(arg, i) === 'waiting at __syncthreads()').length;
+          const past = AR[arg].filter((_, i) => thrStatus(arg, i) === 'past the barrier').length;
+          const k = AR[arg].length;
+          return { kind: 'work', name: `Block ${arg} (example)`, rows: [
+            ['What it is', `An example block. Block A and Block B are resident on the same SM in this example. ${k} of ${arg}’s threads are drawn.`],
+            ['Waits with', `At <code>__syncthreads()</code>: only Block ${arg}’s own non-exited threads. Block ${arg === 'A' ? 'B' : 'A'} is not included, even on the same SM.`],
+            ['view', past === k ? `All ${k} drawn threads are past ${arg}’s barrier.` : waiting ? `${waiting} of ${k} drawn threads are waiting at the barrier; it releases when the last one arrives.` : `All ${k} drawn threads are still before the barrier.`]] };
+        }
+        return { kind: 'work', name: `Block B${n} · blockIdx ${bIdx(n)}`, rows: [
+          ['What it is', 'A group of threads that the GPU always places on the same SM, all together.'],
+          ['Contains', '<code>blockDim</code> threads and, if the kernel declares any, its own shared-memory variables.'],
+          ['Waits with', `<code>__syncthreads()</code>: only B${n}'s own threads.${cv ? ` <code>cluster.sync()</code>: all blocks of cluster C${clusterOf(n)} (${list(members(clusterOf(n)))}).` : ''} Other blocks on the same SM are not included.`],
+          ['Shares data with', `Its own shared memory${cv ? `; through DSMEM, the shared memory of B${members(clusterOf(n)).find(m => m !== n)}` : ''}; global memory.`]] };
+      }
+      case 'thread': return { kind: 'work', name: step === 4 ? 'Thread (in the chart)' : `Thread (in B${isNaN(n) ? 0 : n})`, rows: [
+        ['What it is', 'One running instance of the kernel function, with its own <code>threadIdx</code>, its block\'s <code>blockIdx</code>, and its own registers.'],
+        ['Runs on', 'The SM where its block is resident. Its instructions are issued as part of a warp onto whichever compute units the scheduler uses. No core is permanently its own.'],
+        ['Waits with', `Its block, at <code>__syncthreads()</code>${cv ? '; its cluster, at <code>cluster.sync()</code>' : ''}.`]] };
+      case 'cluster': return { kind: 'work', name: `Thread-block cluster C${n}`, rows: [
+        ['What it is', 'An optional group of blocks inside the grid (compute capability 9.0+), set with cluster dimensions at launch, here (1, 2).'],
+        ['Contains', `Blocks ${list(members(n))}.`],
+        ['Waits with', '<code>cluster.sync()</code> across all threads of its blocks. Other clusters are not included.'],
+        ['Shares data with', 'Distributed shared memory: its blocks can access each other\'s shared memory.']] };
+      case 'gpu': return { kind: 'hw', name: 'GPU chip', rows: [
+        ['What it is', 'The processor: GPCs of SMs, an L2 cache shared by all SMs, and memory controllers. Its DRAM (global memory) sits off-chip.'],
+        ['Contains', 'The map’s fictional GPU: 2 GPCs × 2 SMs. H100 for comparison: 132 SMs in 8 GPCs (PMPP p. 68).']] };
+      case 'gpc': return { kind: 'hw', name: `GPC ${n}`, rows: [
+        ['What it is', 'A hardware group of SMs. PMPP: GPU Processing Cluster. NVIDIA: Graphics Processing Cluster. Not a thread-block cluster.'],
+        ['Waits with', 'Nothing. There is no "GPC barrier".']] };
+      case 'sm': return { kind: 'hw', name: isNaN(n) ? 'SM (shared by Blocks A and B)' : `SM ${n} · Streaming Multiprocessor`, rows: [
+        ['What it is', 'The unit blocks are assigned to. It runs the threads of the blocks resident on it.'],
+        ['Contains', 'Control logic and warp schedulers, streaming processors, a register file, and L1/shared-memory storage (see the drill-down).'],
+        ['Waits with', 'Nothing. Blocks on the same SM are not synchronized with each other.']] };
+      case 'ctrl': return { kind: 'hw', name: 'Control + warp schedulers', rows: [
+        ['What it is', 'Per-SM logic that fetches and dispatches instructions and picks which warp to issue next.'],
+        ['Maps to', 'Works on warps of the blocks resident on its SM (step 7).']] };
+      case 'sp': return { kind: 'hw', name: 'Streaming processors (CUDA cores)', rows: [
+        ['What it is', 'Compute units that carry out arithmetic for the threads of whichever warp was issued.'],
+        ['Contains', 'H100: 128 per SM (PMPP p. 68). Fewer drawn here.'],
+        ['Maps to', 'Not one per thread and not owned by a block or a warp. A thread is not a core.']] };
+      case 'regs': return { kind: 'mem', name: 'Registers', rows: [
+        ['What it is', 'The SM\'s register file, split so each resident thread has its own private registers.'],
+        ['Scope', 'One thread.'],
+        ['Limits', 'Its size limits how many threads, and therefore blocks, can be resident (PMPP §4.7).']] };
+      case 'smem': return { kind: 'mem', name: 'L1 / shared memory storage', rows: [
+        ['What it is', 'On-chip storage per SM. NVIDIA calls it the unified data cache; it provides both shared memory and L1 cache.'],
+        ['Scope', 'Shared memory is allocated per block, and each block sees only its own segment. The exception is DSMEM inside a cluster.'],
+        ['Lifetime', 'A block\'s shared memory exists while the block runs.']] };
+      case 'dsmem': return { kind: 'mem', name: 'Distributed shared memory (DSMEM)', rows: [
+        ['What it is', 'Access to the shared-memory segments of the other blocks in your cluster (read, write, atomics).'],
+        ['Is not', 'Global memory, a chip-wide pool, or all SMs\' storage merged.'],
+        ['Requires', 'Clusters (cc 9.0+). <code>cluster.sync()</code> before the first remote access (all blocks started) and before exit (remote accesses done).']] };
+      case 'l2': return { kind: 'mem', name: 'L2 cache', rows: [
+        ['What it is', 'A cache shared by all SMs on the GPU (NVIDIA §1.2.3.3), between the SMs and the memory controllers.']] };
+      case 'mc': return { kind: 'hw', name: 'Memory controllers', rows: [
+        ['What it is', 'Channels that connect the chip to its off-chip DRAM. Together they provide high bandwidth (PMPP §4.1).']] };
+      case 'gmem': return { kind: 'mem', name: 'Global memory (device DRAM)', rows: [
+        ['What it is', 'Gigabytes of off-chip DRAM attached to the GPU, accessible to all SMs.'],
+        ['Scope', 'Every thread of every block; it persists across kernels until freed.'],
+        ['Your matmul', '<code>M_d</code>, <code>N_d</code> and <code>out_d</code> point here.']] };
+      case 'sched': return { kind: 'op', name: 'Block scheduling', rows: [
+        ['What it is', 'The GPU assigning waiting blocks to SMs that have room for a whole block. Done at run time, not by your code.'],
+        ['Unit', 'A whole block → one SM. With clusters: a whole cluster → one GPC.'],
+        ['Does not', 'Make threads wait for each other, decide an order you can rely on, or give each thread a core.']] };
+      case 'sync': return { kind: 'sync', name: '__syncthreads() · block barrier', rows: [
+        ['What it is', 'A barrier: a thread waits there until every non-exited thread of its block has reached the same call.'],
+        ['Scope', 'One block. Not the SM, not the GPC, not the grid.'],
+        ['Also', 'Orders memory accesses among the participating threads (before → after).'],
+        ['Rule', 'Inside an <code>if</code> only when the condition is uniform across the block, or execution may hang or misbehave.']] };
+      case 'csync': return { kind: 'sync', name: 'cluster.sync() · cluster barrier', rows: [
+        ['What it is', 'A Cooperative Groups barrier for all threads in all blocks of one cluster (cc 9.0+). It spans several blocks, unlike <code>__syncthreads()</code>.'],
+        ['Scope', 'One cluster. Other clusters are not included.'],
+        ['Also', 'PMPP: releases only after the cluster\'s DSMEM operations are complete. NVIDIA: guarantees all the cluster\'s blocks have started.']] };
+      case 'warp': return { kind: 'work', name: 'Warp', rows: [
+        ['What it is', 'A group of 32 consecutive threads of one block, the unit the SM\'s warp schedulers pick from.'],
+        ['Contains', '32 lanes (0–31). A last partial warp is padded with inactive lanes.'],
+        ['Maps to', 'Issued by a warp scheduler onto compute units over time. Lanes are not dedicated cores.']] };
+    }
+    return null;
+  }
+
+  // ------------------------------------------------------------------ state
+  let step = 1, sub = 0, sel = null, layoutName = 'wide', playing = false, timer = null;
+  let lastBlock = 4, animateNext = false;
+  const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const svg = document.getElementById('diagram');
+
+  // ------------------------------------------------------------------ svg primitives
+  const R1 = v => Math.round(v * 10) / 10;
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const rect = (x, y, w, h, cls) => `<rect x="${R1(x)}" y="${R1(y)}" width="${R1(w)}" height="${R1(h)}" class="${cls}"/>`;
+  const text = (x, y, s, cls, anchor) => `<text x="${R1(x)}" y="${R1(y)}" class="${cls}"${anchor ? ` text-anchor="${anchor}"` : ''}>${esc(s)}</text>`;
+  const line = (x1, y1, x2, y2, cls) => `<line x1="${R1(x1)}" y1="${R1(y1)}" x2="${R1(x2)}" y2="${R1(y2)}" class="${cls}"/>`;
+  function head(tip, from, cls, size = 7) {
+    const a = Math.atan2(tip[1] - from[1], tip[0] - from[0]);
+    const p = s => [R1(tip[0] - size * Math.cos(a + s)), R1(tip[1] - size * Math.sin(a + s))];
+    return `<path d="M${R1(tip[0])},${R1(tip[1])} L${p(0.42)} L${p(-0.42)} Z" class="${cls}"/>`;
+  }
+  const poly = pts => 'M' + pts.map(p => `${R1(p[0])},${R1(p[1])}`).join(' L');
+  function arrowPath(d, last, prev, cls, hcls, halo = true) {
+    return (halo ? `<path d="${d}" class="halo"/>` : '') + `<path d="${d}" class="${cls}"/>` + head(last, prev, hcls);
+  }
+  const arrowPts = (pts, cls, hcls, halo) => arrowPath(poly(pts), pts[pts.length - 1], pts[pts.length - 2], cls, hcls, halo);
+  function xmark(x, y, s = 5) { return line(x - s, y - s, x + s, y + s, 'xmark') + line(x - s, y + s, x + s, y - s, 'xmark'); }
+  function stamp(x, y, s) {
+    const w = s.length * 8.2 + 14;
+    return `<g class="stamp">${rect(x, y, w, 20, '')}${text(x + 7, y + 14.5, s, '')}</g>`;
+  }
+  const DEFS = `<defs><pattern id="hatch-sync" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" style="stroke: var(--sync); stroke-width: 1.2"/></pattern></defs>`;
+  const hit = id => ` data-sel="${id}"`;
+  const selc = key => (sel === key ? ' sel' : '');
+
+  // ------------------------------------------------------------------ relationships for highlighting (map views only)
+  function related() {
+    if (!sel) return null;
+    const [base, arg] = sel.split(':'); const n = Number(arg);
+    const K = new Set(); const arrows = new Set();
+    const addBlock = b => { K.add('block:' + b); K.add('sm:' + smOf(b)); K.add('gpc:' + SM_GPC[smOf(b)]); K.add('chip:' + b); arrows.add(b); if (cluster) K.add('cluster:' + clusterOf(b)); };
+    switch (base) {
+      case 'block': addBlock(n); K.add('grid'); break;
+      case 'thread': addBlock(isNaN(n) ? 0 : n); K.add('thread'); K.add('regs'); break;
+      case 'sm': K.add('sm:' + n); K.add('gpc:' + SM_GPC[n]); blocksOn(n).forEach(b => { K.add('block:' + b); K.add('chip:' + b); arrows.add(b); }); ['ctrl', 'sp', 'regs', 'smem', 'zoom'].forEach(k => K.add(k)); break;
+      case 'gpc': K.add('gpc:' + n); smsIn(n).forEach(k => { K.add('sm:' + k); blocksOn(k).forEach(b => { K.add('block:' + b); K.add('chip:' + b); arrows.add(b); }); }); if (cluster) clustersIn(n).forEach(c => K.add('cluster:' + c)); break;
+      case 'cluster': if (cluster) members(n).forEach(addBlock); break;
+      case 'grid': K.add('grid'); for (let b = 0; b < NB; b++) { K.add('block:' + b); if (cluster) K.add('cluster:' + clusterOf(b)); } break;
+      case 'launch': case 'runtime': K.add('host'); K.add('grid'); break;
+      case 'gpu': ['gpu', 'sched', 'l2', 'mc', 'gmem'].forEach(k => K.add(k)); for (let k = 0; k < 4; k++) { K.add('sm:' + k); K.add('gpc:' + SM_GPC[k]); } break;
+      case 'sched': K.add('sched'); for (let b = 0; b < NB; b++) addBlock(b); break;
+      case 'sync': K.add('block:0'); break;
+      case 'csync': if (cluster) { members(0).forEach(b => K.add('block:' + b)); K.add('cluster:0'); } break;
+      case 'ctrl': case 'sp': case 'regs': case 'smem': K.add(base); K.add('zoom'); if (base === 'regs') K.add('thread'); break;
+      case 'dsmem': K.add('smem'); K.add('zoom'); if (cluster) for (let c = 0; c < 3; c++) K.add('cluster:' + c); break;
+      case 'warp': K.add('thread'); K.add('ctrl'); K.add('zoom'); break;
+      case 'l2': case 'mc': case 'gmem': K.add(base); break;
+    }
+    return { K, arrows };
+  }
+  let REL = null;
+  // dim() returns ' dim' when something else is selected; keys may be a list
+  const dim = (...keys) => (!REL || keys.some(k => REL.K.has(k))) ? '' : ' dim';
+
+  // ------------------------------------------------------------------ maps view (steps 1, 2, 5)
+  function mapGeom(narrow) {
+    const L = { narrow };
+    L.W = narrow ? 360 : 860;
+    L.hostH = narrow ? 66 : 50;
+    L.wk = { x: 0, w: 352 };
+    L.hw = narrow ? { x: 16, w: 344 } : { x: 420, w: 440 };
+    L.y0 = L.hostH + 40;
+    L.gy = L.y0 + 8;
+    L.bw = 96; L.bh = 62; L.gap = 18;
+    L.bx = c => L.wk.x + 14 + c * (L.bw + L.gap);
+    L.by = r => L.gy + 32 + r * (L.bh + L.gap);
+    L.gridBottom = L.gy + 202;
+    L.laneY = k => L.gridBottom + 10 + k * 6;
+    L.gutterX = k => narrow ? 3 + k * 2.2 : 368 + k * 7;
+    L.labelY = L.gridBottom + 64;
+    L.hy = narrow ? L.gridBottom + 132 : L.y0;
+    L.gpuY = L.hy + 10;
+    L.smH = 44;
+    L.gpcH = 28 + 2 * L.smH + 8 + 10;
+    L.gpcX = L.hw.x + 10; L.gpcW = L.hw.w - 20;
+    L.gpcY = g => L.gpuY + 66 + g * (L.gpcH + 10);
+    L.smX = L.gpcX + 10; L.smW = L.gpcW - 20;
+    L.smY = k => L.gpcY(SM_GPC[k]) + 28 + (k % 2) * (L.smH + 8);
+    L.l2Y = L.gpcY(1) + L.gpcH + 10;
+    L.mcY = L.l2Y + 32;
+    L.gpuEnd = L.mcY + 34;
+    L.dramY = L.gpuEnd + 16;
+    L.hwEnd = L.dramY + 34;
+    L.zoomY = narrow ? L.hwEnd + 40 : L.labelY + 72;
+    L.zoomH = 176;
+    L.H = Math.max(L.hwEnd, L.zoomY + L.zoomH) + 8;
+    return L;
+  }
+
+  function drawHost(L) {
+    let o = `<g${hit('launch')}>` + rect(0, 0, L.W, L.hostH, 'box-host hit' + dim('host')) + '</g>';
+    o += text(10, 19, L.narrow ? 'HOST · CPU · software' : 'HOST · CPU · software, not on the GPU', 't-hdr c-muted' + dim('host'));
+    if (L.narrow) {
+      o += text(10, 38, 'kernel<<<grid, block>>>(args)', 't-in' + dim('host'));
+      o += `<g${hit('runtime')}>` + text(10, 56, '→ CUDA runtime + driver → launch', 't-in hit' + dim('host')) + '</g>';
+    } else {
+      o += `<g${hit('runtime')}>` + text(10, 39, 'kernel<<<grid, block>>>(args) → CUDA runtime + driver → launch request to the GPU', 't-in hit' + dim('host')) + '</g>';
+    }
+    const ax = 120;
+    o += `<path d="M${ax},${L.hostH} L${ax},${L.gy - 2}" class="a-launch${dim('host', 'grid')}"/>` + head([ax, L.gy - 1], [ax, L.hostH], 'hd-launch' + dim('host', 'grid'), 6);
+    o += text(ax + 8, L.hostH + 18, 'launch → one grid', 't-sub' + dim('host', 'grid'));
+    if (!L.narrow) {
+      const gx = 640;
+      o += `<path d="M${gx},${L.hostH} L${gx},${L.gpuY - 2}" class="a-launch${dim('host', 'gpu', 'sched')}"/>` + head([gx, L.gpuY - 1], [gx, L.hostH], 'hd-launch' + dim('host', 'gpu', 'sched'), 6);
+      o += text(gx + 8, L.hostH + 18, 'handed to the GPU', 't-sub' + dim('host', 'gpu', 'sched'));
+    }
+    return o;
+  }
+
+  function drawWork(L) {
+    let o = text(L.wk.x, L.y0 - 6, L.narrow ? 'WORK · LOGICAL' : 'WORK · LOGICAL · what you launch', 't-hdr c-work');
+    o += `<g${hit('grid')}>` + rect(L.wk.x, L.gy, L.wk.w, 202, 'box-w hit' + dim('grid') + selc('grid')) + '</g>';
+    o += text(L.wk.x + 14, L.gy + 21, 'GRID · gridDim (3, 2)', 't-blk' + dim('grid'));
+    if (cluster) {
+      for (let c = 0; c < 3; c++) {
+        const x = L.bx(c), y = L.by(0), d = dim('cluster:' + c);
+        o += `<g${hit('cluster:' + c)}>` + rect(x - 6, y - 6, L.bw + 12, 2 * L.bh + L.gap + 12, 'clu hit' + d + selc('cluster:' + c)) + '</g>';
+        o += text(x - 2, L.by(1) + L.bh + 22, `cluster C${c}`, 't-sub c-work' + d);
+      }
+    }
+    for (let n = 0; n < NB; n++) {
+      const x = L.bx(n % 3), y = L.by(Math.floor(n / 3)), d = dim('block:' + n);
+      o += `<g${hit('block:' + n)}>` + rect(x, y, L.bw, L.bh, 'box-w hit' + d + selc('block:' + n)) + '</g>';
+      o += text(x + 8, y + 19, `B${n}`, 't-blk' + d);
+      o += text(x + 36, y + 19, bIdx(n).replace(', ', ','), 't-sub' + d);
+      o += `<g${hit('thread:' + n)} class="hit">`;
+      for (let i = 0; i < 4; i++) o += `<circle cx="${x + 13 + i * 15}" cy="${y + 34}" r="5" class="thr${d}"/>`;
+      o += text(x + 71, y + 38, '…', 't-sub' + d) + '</g>';
+      o += text(x + 8, y + 55, 'threads', 't-sub' + d);
+    }
+    if (sel === 'sync') o += rect(L.bx(0) - 3, L.by(0) - 3, L.bw + 6, L.bh + 6, 'scope');
+    if (sel === 'csync' && cluster) o += rect(L.bx(0) - 9, L.by(0) - 9, L.bw + 18, 2 * L.bh + L.gap + 18, 'scope');
+    return o;
+  }
+
+  const zoomSM = () => {
+    if (!sel) return 0;
+    const [base, arg] = sel.split(':'); const n = Number(arg);
+    if (base === 'sm') return n;
+    if ((base === 'block' || base === 'thread') && !isNaN(n)) return smOf(n);
+    if (base === 'cluster') return smOf(n);
+    if (base === 'gpc') return smsIn(n)[0];
+    return 0;
+  };
+
+  function drawSM(L, k) {
+    const x = L.smX, y = L.smY(k), w = L.smW, d = dim('sm:' + k);
+    let o = `<g${hit('sm:' + k)}>` + rect(x, y, w, L.smH, 'box-hw hit' + d + selc('sm:' + k)) + '</g>';
+    o += text(x + 10, y + 27, `SM ${k}`, 't-blk' + d);
+    o += text(x + 62, y + 27, 'resident:', 't-sub' + d);
+    const bs = blocksOn(k), cx = x + 140;
+    bs.forEach((b, i) => {
+      const cd = dim('chip:' + b, 'block:' + b);
+      o += `<g${hit('block:' + b)}>` + rect(cx + i * 66, y + 9, 60, 26, 'chip hit' + cd + selc('block:' + b)) + '</g>';
+      o += text(cx + i * 66 + 30, y + 26.5, cluster ? `B${b}·C${clusterOf(b)}` : `B${b}`, 't-in' + cd, 'middle');
+    });
+    if (!bs.length) o += text(cx, y + 27, 'none now', 't-sub' + d);
+    if (!L.narrow && k === zoomSM()) o += text(x + w - 10, y + 27, '◂ drill-down', 't-sub' + d, 'end');
+    return o;
+  }
+
+  function drawHardware(L) {
+    const H = L.hw;
+    let o = text(H.x, L.hy - 6, L.narrow ? 'HARDWARE · PHYSICAL' : 'HARDWARE · PHYSICAL · a fictional small GPU', 't-hdr c-hw');
+    o += `<g${hit('gpu')}>` + rect(H.x, L.gpuY, H.w, L.gpuEnd - L.gpuY, 'box-hw hit' + dim('gpu') + selc('gpu')) + '</g>';
+    o += text(H.x + 10, L.gpuY + 21, 'GPU CHIP · 2 GPCs × 2 SMs', 't-blk' + dim('gpu'));
+    o += `<g${hit('sched')}>` + rect(H.x + 10, L.gpuY + 30, H.w - 20, 26, 'box-sched hit' + dim('sched') + selc('sched')) + '</g>';
+    o += text(H.x + 18, L.gpuY + 47, L.narrow ? 'block scheduling (GPU side)' : 'block scheduling (GPU side): whole blocks → SMs', 't-in' + dim('sched'));
+    for (let g = 0; g < 2; g++) {
+      const y = L.gpcY(g), d = dim('gpc:' + g);
+      o += `<g${hit('gpc:' + g)}>` + rect(L.gpcX, y, L.gpcW, L.gpcH, 'box-hw hit' + d + selc('gpc:' + g)) + '</g>';
+      o += text(L.gpcX + 10, y + 19, `GPC ${g}`, 't-hdr c-hw' + d);
+      if (cluster) {
+        const cs = clustersIn(g).map(c => 'C' + c).join(', ') || 'none';
+        o += text(L.gpcX + 70, y + 19, (L.narrow ? 'clusters: ' : 'clusters co-scheduled here: ') + cs, 't-sub c-work' + dim('gpc:' + g, ...clustersIn(g).map(c => 'cluster:' + c)));
+      }
+      smsIn(g).forEach(k => { o += drawSM(L, k); });
+    }
+    o += `<g${hit('l2')}>` + rect(H.x + 10, L.l2Y, H.w - 20, 24, 'box-mem hit' + dim('l2')) + text(H.x + 18, L.l2Y + 16.5, 'L2 cache · shared by all SMs', 't-in hit' + dim('l2')) + '</g>';
+    const mw = (H.w - 20 - 3 * 8) / 4;
+    o += `<g${hit('mc')}>`;
+    for (let i = 0; i < 4; i++) {
+      const mx = H.x + 10 + i * (mw + 8);
+      o += rect(mx, L.mcY, mw, 24, 'box-plain hit' + dim('mc'));
+      o += text(mx + mw / 2, L.mcY + 16.5, 'mem ctrl', 't-sub hit' + dim('mc'), 'middle');
+      o += line(mx + mw / 2, L.mcY + 24, mx + mw / 2, L.dramY, 'a-line' + dim('mc', 'gmem'));
+    }
+    o += '</g>';
+    o += `<g${hit('gmem')}>` + rect(H.x, L.dramY, H.w, 34, 'box-mem hit' + dim('gmem') + selc('gmem')) + '</g>';
+    o += text(H.x + 10, L.dramY + 22, L.narrow ? 'GLOBAL MEMORY · off-chip DRAM' : 'GLOBAL MEMORY · off-chip DRAM · all SMs', 't-blk' + dim('gmem'));
+    return o;
+  }
+
+  // One SM opened up, drawn once instead of repeating its internals in every SM
+  function drawZoom(L) {
+    const x = 0, y = L.zoomY, w = 352, k = zoomSM();
+    let o = text(x, y - 8, `INSIDE SM ${k} · drill-down`, 't-hdr c-hw');
+    o += rect(x, y, w, L.zoomH, 'box-hw' + dim('zoom', 'sm:' + k));
+    o += `<g${hit('ctrl')}>` + rect(x + 10, y + 12, 160, 46, 'box-plain hit' + dim('ctrl', 'zoom')) + text(x + 18, y + 31, 'control +', 't-in' + dim('ctrl', 'zoom')) + text(x + 18, y + 49, 'warp schedulers', 't-in' + dim('ctrl', 'zoom')) + '</g>';
+    o += text(x + 184, y + 25, 'compute units', 't-sub' + dim('sp', 'zoom'));
+    o += `<g${hit('sp')}>`;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 10; i++) o += rect(x + 184 + i * 15, y + 33 + r * 14, 11, 11, 'unit hit' + dim('sp', 'zoom'));
+    o += '</g>';
+    o += `<g${hit('regs')}>` + rect(x + 10, y + 70, w - 20, 28, 'box-mem hit' + dim('regs', 'zoom')) + text(x + 18, y + 89, 'registers · private per thread', 't-in' + dim('regs', 'zoom')) + '</g>';
+    o += `<g${hit('smem')}>` + rect(x + 10, y + 106, w - 20, 28, 'box-mem hit' + dim('smem', 'zoom')) + text(x + 18, y + 125, 'L1 cache + shared memory', 't-in' + dim('smem', 'zoom')) + '</g>';
+    o += text(x + 10, y + 153, 'shared memory: separate segment per block', 't-sub' + dim('smem', 'zoom'));
+    o += text(x + 10, y + 169, 'every SM has these same parts', 't-sub' + dim('zoom', 'sm:' + k));
+    return o;
+  }
+
+  function drawSchedArrows(L) {
+    const lst = REL ? [...REL.arrows].sort() : [...Array(NB).keys()];
+    let o = '';
+    if (lst.length) {
+      const faint = !REL, perSM = {};
+      lst.forEach(b => { (perSM[smOf(b)] = perSM[smOf(b)] || []).push(b); });
+      o += `<g${faint ? ' opacity=".55"' : ''}>`;
+      lst.forEach((b, k) => {
+        const c = b % 3, r = Math.floor(b / 3);
+        const sx = L.bx(c) + L.bw, sy = L.by(r) + L.bh / 2 + (r ? 8 : 0), gapX = sx + 9;
+        const sm = smOf(b), peers = perSM[sm], j = peers.indexOf(b);
+        const ty = L.smY(sm) + 22 + (j - (peers.length - 1) / 2) * 9;
+        const pts = [[sx, sy], [gapX, sy], [gapX, L.laneY(k)], [L.gutterX(k), L.laneY(k)], [L.gutterX(k), ty], [L.smX - 1, ty]];
+        o += `<g class="${animateNext && !faint ? 'fade' : ''}">` + arrowPts(pts, 'a-sched', 'hd-sched') + '</g>';
+        if (animateNext && !faint && !reduceMotion && lst.length <= 2) {
+          o += `<circle r="5" class="dot-sched"><animateMotion dur="0.9s" fill="freeze" path="${poly(pts)}"/><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" dur="0.9s" fill="freeze"/></circle>`;
+        }
+      });
+      o += '</g>';
+    }
+    const ly = L.labelY;
+    o += line(L.wk.x, ly - 5, L.wk.x + 24, ly - 5, 'a-sched') + head([L.wk.x + 30, ly - 5], [L.wk.x, ly - 5], 'hd-sched', 6);
+    o += text(L.wk.x + 36, ly, 'BLOCK SCHEDULING · block → one SM', 't-hdr c-sched');
+    o += text(L.wk.x + 36, ly + 17, 'run-time snapshot · placement illustrative', 't-sub');
+    if (cluster) o += text(L.wk.x + 36, ly + 33, 'guaranteed: each cluster stays in one GPC', 't-sub c-work');
+    return o;
+  }
+
+  function drawMaps(L) { return drawHost(L) + drawWork(L) + drawHardware(L) + drawZoom(L) + drawSchedArrows(L); }
+
+  // ------------------------------------------------------------------ step 3: scheduling with more work than room
+  function drawSim(narrow) {
+    const s = SIM[sub], W = narrow ? 360 : 860;
+    let o = '';
+    const chip = (x, y, w, b, cls, label) => `<g${hit('block:' + b)}>` + rect(x, y, w, 28, cls + ' hit' + selc('block:' + b)) + text(x + w / 2, y + 18.5, label || `B${b}`, 't-in', 'middle') + '</g>';
+    let waitPos, slotPos, donePos, smBox, H;
+    if (!narrow) {
+      o += text(0, 16, 'WAITING', 't-hdr c-work');
+      waitPos = b => [0, 28 + b * 36, 150];
+      smBox = k => [230, 30 + k * 108, 380, 94];
+      slotPos = (k, j) => [244 + j * 180, 30 + k * 108 + 50, 166];
+      o += text(230, 16, 'FICTIONAL GPU · 2 SMs · 2 fit per SM (assumed)', 't-hdr c-hw');
+      o += text(650, 16, 'COMPLETED', 't-hdr c-muted');
+      donePos = i => [650, 28 + i * 36, 190];
+      H = 250;
+    } else {
+      o += text(0, 16, 'WAITING', 't-hdr c-work');
+      waitPos = b => [b * 60, 26, 54];
+      smBox = k => [k * 182, 86, 178, 116];
+      slotPos = (k, j) => [k * 182 + 12, 86 + 36 + j * 38, 158];
+      o += text(0, 222, 'FICTIONAL · 2 SMs · 2 fit each (assumed)', 't-hdr c-hw');
+      o += text(0, 250, 'COMPLETED', 't-hdr c-muted');
+      donePos = i => [i * 60, 260, 54];
+      H = 296;
+    }
+    for (let b = 0; b < 6; b++) { const [x, y, w] = waitPos(b); o += rect(x, y, w, 28, 'slot'); }
+    for (let k = 0; k < 2; k++) {
+      const [x, y, w, h] = smBox(k);
+      o += `<g${hit('sm:' + k)}>` + rect(x, y, w, h, 'box-hw hit' + selc('sm:' + k)) + '</g>' + text(x + 10, y + 21, `SM ${k}`, 't-blk');
+      for (let j = 0; j < 2; j++) {
+        const [sx, sy, sw] = slotPos(k, j);
+        o += rect(sx - 4, sy - 4, sw + 8, 36, 'slot');
+        if (!narrow) o += text(sx + sw + 4, sy - 9, `room ${j + 1} · assumed`, 't-sub', 'end');
+      }
+    }
+    // each block keeps its own waiting row, so an arrow always starts at the block it moves
+    s.wait.forEach(b => { const [x, y, w] = waitPos(b); o += chip(x, y, w, b, 'chip', narrow ? `B${b}` : `B${b} · waiting`); });
+    s.slots.forEach((row, k) => row.forEach((b, j) => {
+      const [x, y, w] = slotPos(k, j);
+      if (b === null) { o += text(x + w / 2, y + 18.5, 'free', 't-sub', 'middle'); return; }
+      o += `<g class="${s.moved.includes(b) && !reduceMotion ? 'fade' : ''}">` + chip(x, y, w, b, 'chip', narrow ? `B${b} resident` : `B${b} · resident`) + '</g>';
+    }));
+    s.done.forEach((b, i) => { const [x, y, w] = donePos(i); o += chip(x, y, w, b, 'chip-done', narrow ? `B${b}` : `B${b} · completed`); });
+    // first room: enter from the left side; second room: drop in from above, so no arrow crosses another chip
+    s.moved.forEach((b, i) => {
+      const k = s.slots.findIndex(r => r.includes(b)), j = s.slots[k].indexOf(b);
+      const [tx, ty, tw] = slotPos(k, j);
+      const [wx, wy, ww] = waitPos(b);
+      let pts;
+      if (!narrow) {
+        const gx = 178 + i * 7, top = smBox(k)[1] + 6;
+        pts = j === 0 ? [[wx + ww, wy + 14], [gx, wy + 14], [gx, ty + 14], [tx - 6, ty + 14]]
+                      : [[wx + ww, wy + 14], [gx, wy + 14], [gx, top], [tx + 24, top], [tx + 24, ty - 6]];
+      } else {
+        const lane = 62 + i * 4, gx = k * 182 + (j ? 3 : 7);
+        pts = [[wx + ww / 2, wy + 28], [wx + ww / 2, lane], [gx, lane], [gx, ty + 14], [tx - 6, ty + 14]];
+      }
+      o += `<g class="${reduceMotion ? '' : 'fade'}">` + arrowPts(pts, 'a-sched', 'hd-sched') + '</g>';
+    });
+    // comparison: a bigger fictional GPU runs the same blocks, same code (static picture)
+    const cy = H + 26;
+    o += line(0, cy - 14, W, cy - 14, 'a-line');
+    o += text(0, cy + 6, narrow ? 'SAME 6 BLOCKS · BIGGER GPU · 4 SMs' : 'SAME 6 BLOCKS, SAME KERNEL · BIGGER FICTIONAL GPU · 4 SMs × 2 (assumed)', 't-hdr c-hw');
+    const big = [[0, 1], [2, 3], [4, 5], [null, null]];
+    const bw = narrow ? 176 : 205, bx = k => narrow ? (k % 2) * 184 : k * 218, byy = k => narrow ? cy + 18 + Math.floor(k / 2) * 80 : cy + 18;
+    big.forEach((row, k) => {
+      o += rect(bx(k), byy(k), bw, 70, 'box-hw') + text(bx(k) + 10, byy(k) + 19, `SM ${k}`, 't-blk');
+      row.forEach((b, j) => {
+        const x = bx(k) + 8 + j * ((bw - 16) / 2), w = (bw - 16) / 2 - 6;
+        if (b === null) o += rect(x, byy(k) + 30, w, 28, 'slot') + text(x + w / 2, byy(k) + 48.5, 'idle', 't-sub', 'middle');
+        else o += rect(x, byy(k) + 30, w, 28, 'chip') + text(x + w / 2, byy(k) + 48.5, `B${b}`, 't-in', 'middle');
+      });
+    });
+    let ny = narrow ? cy + 18 + 2 * 80 + 16 : cy + 112;
+    const lines = narrow
+      ? [['All six fit at once (assumption).', 't-in'], ['No code change: transparent scalability.', 't-in'], ['Waves (a counting view, not a batch):', 't-sub'], ['small 6 ÷ 4 = 1.5 · bigger 6 ÷ 8 = 0.75', 't-sub']]
+      : [['All six fit at once under this assumption. No code change: transparent scalability.', 't-in'], ['Waves (a counting view, not a lockstep batch): small GPU 6 ÷ 4 = 1.5 · bigger GPU 6 ÷ 8 = 0.75', 't-sub']];
+    lines.forEach(([t, c]) => { o += text(0, ny, t, c); ny += 18; });
+    o += stamp(0, ny, 'TEACHING EXAMPLE · NOT A SPEC');
+    return { o, W, H: ny + 26 };
+  }
+
+  // ------------------------------------------------------------------ step 4: barrier timelines
+  function drawBarrier(narrow) {
+    const W = narrow ? 360 : 860, T = TIMES[sub];
+    const lx = narrow ? 64 : 128, rx = W - 12, sx = t => lx + (rx - lx) * t / 100;
+    const relA = Math.max(...AR.A), relB = Math.max(...AR.B);
+    let o = '';
+    const hdrA = narrow ? ['BLOCK A · 4 threads shown', 'same call, reached at different times'] : ['BLOCK A · 4 representative threads (a real block has blockDim)', 'time → · every row reaches the same __syncthreads() call, at a different time'];
+    o += `<g${hit('block:A')}>` + text(0, 16, hdrA[0], 't-hdr c-work hit') + '</g>' + text(0, 34, hdrA[1], 't-sub');
+    const rowsA = [0, 1, 2, 3].map(i => ({ name: narrow ? `A·t${i}` : `A · t${i}`, arr: AR.A[i], rel: relA, y: 62 + i * 32 }));
+    const by0 = rowsA[3].y + 86;
+    const rowsB = [0, 1].map(i => ({ name: narrow ? `B·t${i}` : `B · t${i}`, arr: AR.B[i], rel: relB, y: by0 + i * 32 }));
+    o += `<g${hit('block:B')}>` + text(0, by0 - 30, narrow ? 'BLOCK B · same SM, own barrier' : 'BLOCK B · same SM in this example · its own code, its own barrier', 't-hdr c-work hit') + '</g>';
+    const draw = r => {
+      let s = `<g${hit('thread:' + r.name[0])}>` + text(0, r.y + 4.5, r.name, 't-code hit') + '</g>';
+      s += line(lx, r.y, rx, r.y, 'a-line');
+      s += line(sx(0), r.y, sx(Math.min(T, r.arr)), r.y, 'run');
+      if (T > r.arr) {
+        s += line(sx(r.arr), r.y - 10, sx(r.arr), r.y + 10, 'tick');
+        const w2 = Math.min(T, r.rel);
+        if (w2 > r.arr) s += rect(sx(r.arr), r.y - 8, sx(w2) - sx(r.arr), 16, 'wait');
+        if (T > r.rel) s += line(sx(r.rel), r.y, sx(T), r.y, 'run');
+      }
+      return s;
+    };
+    rowsA.forEach(r => { o += draw(r); });
+    rowsB.forEach(r => { o += draw(r); });
+    if (T > relA) {
+      o += line(sx(relA), rowsA[0].y - 16, sx(relA), rowsA[3].y + 14, 'rel');
+      o += text(sx(relA) - 6, rowsA[3].y + 30, narrow ? 'A released' : 'A released: its last thread arrived', 't-sub c-sync', 'end');
+    }
+    if (T > relB) {
+      o += line(sx(relB), rowsB[0].y - 16, sx(relB), rowsB[1].y + 14, 'rel');
+      o += text(sx(relB) - 6, rowsB[1].y + 30, narrow ? 'B released' : 'B’s own barrier released', 't-sub c-sync', 'end');
+    }
+    o += line(sx(T), 44, sx(T), rowsB[1].y + 16, 'now');
+    const bx = lx - 12;
+    o += rect(bx, rowsA[0].y - 12, 5, rowsA[3].y - rowsA[0].y + 24, 'box-sync');
+    o += rect(bx, rowsB[0].y - 12, 5, rowsB[1].y - rowsB[0].y + 24, 'box-sync');
+    let ny = rowsB[1].y + 56;
+    const notes = narrow
+      ? [['Orange bars: two separate barrier scopes.', 't-in'], ['A’s barrier never includes B.', 't-in'], ['Times are invented; no measurement.', 't-sub']]
+      : [['Orange bars mark two separate barrier scopes. A’s barrier never includes B, even on the same SM.', 't-in'], ['Times are invented to show the idea; nothing here is a measurement.', 't-sub']];
+    notes.forEach(([t, c]) => { o += text(0, ny, t, c); ny += 18; });
+    return { o, W, H: ny };
+  }
+  function barrierStatus() {
+    return ['A', 'B'].map(blk => AR[blk].map((_, i) => `<li><b>${blk}·t${i}</b> ${thrStatus(blk, i)}</li>`).join('')).join('');
+  }
+
+  // ------------------------------------------------------------------ step 6: distributed shared memory
+  // GPC 0 in the cluster-mode snapshot: SM 0 holds B2 and B0, SM 1 holds B3 and B5.
+  // Arrows only travel through gaps; the storage label sits under the segments so nothing crosses it.
+  function drawDsmem(narrow) {
+    const W = narrow ? 360 : 860;
+    if (!cluster) {
+      let o = rect(0, 0, W, 104, 'box-note');
+      const t = narrow ? ['Distributed shared memory needs', 'thread-block clusters, and cluster', 'mode is off. Turn on Clusters above.', 'Ordinary shared memory stays per block.']
+                       : ['Distributed shared memory needs thread-block clusters, and cluster mode is off.', 'Turn on the Clusters switch above to see it. Without clusters,', 'every block’s shared memory is reachable only by that block.'];
+      t.forEach((s, i) => { o += text(14, 26 + i * 22, s, i ? 't-in' : 't-blk'); });
+      return { o, W, H: 112 };
+    }
+    const on = sub >= 1;
+    let o = '';
+    const smH = narrow ? 176 : 204;
+    const smBox = narrow ? (k => ({ x: 8, y: 50 + k * 200, w: 336 })) : (k => ({ x: 16 + k * 424, y: 56, w: 404 }));
+    const order = narrow ? [[2, 0], [5, 3]] : [[2, 0], [3, 5]];
+    const bw = 150, bh = 58, bstep = narrow ? 164 : 180;
+    const gpcH = narrow ? 2 * 200 + 8 : 248;
+    o += `<g${hit('gpc:0')}>` + rect(0, 26, narrow ? W - 4 : W, gpcH, 'box-hw hit') + '</g>';
+    o += text(8, 18, narrow ? 'GPC 0 · cluster-mode snapshot' : 'GPC 0 · cluster-mode snapshot · C0 = B0 + B3 · C2 = B2 + B5', 't-hdr c-hw');
+    const B = {}, S = {};
+    [0, 1].forEach(k => {
+      const s = smBox(k);
+      o += `<g${hit('sm:' + k)}>` + rect(s.x, s.y, s.w, smH, 'box-hw hit' + selc('sm:' + k)) + '</g>' + text(s.x + 10, s.y + 20, `SM ${k}`, 't-blk');
+      const memTop = s.y + (narrow ? 100 : 120), segH = 30;
+      o += `<g${hit('smem')}>` + rect(s.x + 10, memTop, s.w - 20, segH + 36, 'box-mem hit') + '</g>';
+      o += text(s.x + 18, memTop + segH + 28, narrow ? 'L1 · shared storage of this SM' : 'L1 · shared-memory storage of this SM (on-chip)', 't-sub');
+      order[k].forEach((b, i) => {
+        const x = s.x + (narrow ? 10 : 16) + i * bstep, y = s.y + 30;
+        B[b] = { x, y };
+        o += `<g${hit('block:' + b)}>` + rect(x, y, bw, bh, 'box-w hit' + selc('block:' + b)) + '</g>' + text(x + 8, y + 19, `B${b} · cluster C${clusterOf(b)}`, 't-blk');
+        for (let t = 0; t < 4; t++) o += `<circle cx="${x + 14 + t * 15}" cy="${y + 40}" r="5" class="thr"/>`;
+        o += text(x + 76, y + 44, 'threads', 't-sub');
+        S[b] = { x, y: memTop + 8 };
+        o += rect(x, memTop + 8, bw, segH, 'box-w') + text(x + 8, memTop + 8 + segH / 2 + 4.5, `smem of B${b}`, 't-in');
+      });
+    });
+    [2, 0, 5, 3].forEach(b => {
+      const ox = (!narrow && b === 3) ? bw - 24 : 24;
+      const p0 = [B[b].x + ox, B[b].y + bh], p1 = [B[b].x + ox, S[b].y - 1];
+      o += arrowPts([p0, p1], 'a-data', 'hd-data', false);
+    });
+    {
+      const p0 = [B[0].x + 8, B[0].y + bh], p1 = [S[2].x + bw - 8, S[2].y - 1];
+      o += `<path d="${poly([p0, p1])}" class="a-no"/>` + xmark((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2);
+      const s0 = smBox(0);
+      o += text(s0.x + 64, s0.y + 20, narrow ? '✕ not B0’s: B2’s smem' : `✕ B0 can’t use B2’s smem (${on ? 'other cluster' : 'other block'})`, 't-sub c-fg');
+    }
+    if (on) {
+      let p1, p2;
+      if (!narrow) {
+        const s0 = smBox(0), gL = 424, gR = 432;
+        p1 = [[B[0].x + bw, B[0].y + 18], [gL, B[0].y + 18], [gL, s0.y + 110], [S[3].x + 40, s0.y + 110], [S[3].x + 40, S[3].y - 1]];
+        p2 = [[B[3].x, B[3].y + 44], [gR, B[3].y + 44], [gR, s0.y + 98], [S[0].x + bw - 40, s0.y + 98], [S[0].x + bw - 40, S[0].y - 1]];
+        o += text(W / 2, 46, 'DSMEM inside cluster C0 (ochre, across the gap): B0 → smem of B3 · B3 → smem of B0', 't-sub c-mem', 'middle');
+      } else {
+        const segMid = b => S[b].y + 15;
+        p1 = [[B[0].x + bw, B[0].y + 18], [352, B[0].y + 18], [352, segMid(3)], [S[3].x + bw + 1, segMid(3)]];
+        p2 = [[B[3].x + bw, B[3].y + 34], [347, B[3].y + 34], [347, segMid(0)], [S[0].x + bw + 1, segMid(0)]];
+        o += text(W - 24, smBox(1).y - 8, 'DSMEM in C0: B0 ⇄ B3 smem', 't-sub c-mem', 'end');
+      }
+      o += `<g class="${reduceMotion ? '' : 'fade'}">` + arrowPts(p1, 'a-data', 'hd-data') + arrowPts(p2, 'a-data', 'hd-data') + '</g>';
+    }
+    const gy = 26 + gpcH + 40;
+    o += text(0, gy - 10, narrow ? 'GLOBAL MEMORY PATH · separate' : 'GLOBAL MEMORY PATH · separate from shared memory and DSMEM', 't-hdr c-mem');
+    o += `<g${hit('l2')}>` + rect(0, gy, W, 24, 'box-mem hit') + text(10, gy + 16.5, 'L2 cache (all SMs) → memory controllers', 't-in') + '</g>';
+    o += `<g${hit('gmem')}>` + rect(0, gy + 32, W, 30, 'box-mem hit') + text(10, gy + 52, 'GLOBAL MEMORY · off-chip DRAM', 't-blk') + '</g>';
+    let H = gy + 70;
+    if (sub === 2) {
+      const y = H + 30;
+      o += text(0, y - 10, narrow ? 'LIFETIME · each block in C0' : 'LIFETIME · what each block in C0 does, in order', 't-hdr c-sync');
+      const steps = ['block starts', 'cluster.sync()', 'remote reads/writes', 'cluster.sync()', 'block exits'];
+      const cls = i => (i === 1 || i === 3) ? 'box-sync' : i === 2 ? 'box-mem' : 'box-plain';
+      if (!narrow) {
+        const sw = (W - 4 * 12) / 5;
+        steps.forEach((st, i) => {
+          const x = i * (sw + 12);
+          o += rect(x, y, sw, 36, cls(i)) + text(x + sw / 2, y + 23, st, 't-in', 'middle');
+          if (i < 4) o += head([x + sw + 11, y + 18], [x + sw, y + 18], 'hd-fg', 6);
+        });
+        o += text(0, y + 58, '1st sync: every block in C0 has started, so its segment exists.', 't-sub');
+        o += text(0, y + 76, '2nd sync: nobody is still touching a segment when its block exits.', 't-sub');
+        H = y + 84;
+      } else {
+        steps.forEach((st, i) => {
+          const ry = y + i * 34;
+          o += rect(0, ry, 210, 26, cls(i)) + text(10, ry + 17.5, st, 't-in');
+          if (i < 4) o += head([105, ry + 33], [105, ry + 26], 'hd-fg', 5);
+        });
+        o += text(220, y + 51, '← all started', 't-sub');
+        o += text(220, y + 119, '← accesses done', 't-sub');
+        H = y + 5 * 34 + 4;
+      }
+    }
+    return { o, W, H };
+  }
+
+  // ------------------------------------------------------------------ step 7: warps inside an SM
+  function drawWarps(narrow) {
+    const W = narrow ? 360 : 860, smId = warpSM(), other = warpOther();
+    let o = '';
+    const by = 26, bwid = narrow ? W : 400;
+    o += `<g${hit('block:0')}>` + text(0, 16, narrow ? 'BLOCK B0 · 64 threads (1-D)' : 'BLOCK B0 · 64 threads (1-D example)', 't-hdr c-work hit') + '</g>';
+    o += rect(0, by, bwid, 128, 'box-w');
+    const tickW = narrow ? 10 : 11, tx0 = 12;
+    const rowsY = [by + 34, by + 90];
+    [0, 1].forEach(w => {
+      o += `<g${hit('warp')}>`;
+      o += text(tx0, rowsY[w] - 9, `warp ${w} · threadIdx.x ${w * 32}–${w * 32 + 31}`, 't-in hit');
+      for (let i = 0; i < 32; i++) o += rect(tx0 + i * tickW, rowsY[w], tickW - 2.5, 16, 'lane hit');
+      o += '</g>';
+      o += text(tx0, rowsY[w] + 31, 'lane 0', 't-sub');
+      o += text(tx0 + 32 * tickW - 2.5, rowsY[w] + 31, 'lane 31', 't-sub', 'end');
+    });
+    const sx = narrow ? 0 : 440, sy = narrow ? 192 : 26, sw = narrow ? W : 420;
+    const pw = (sw - 30) / 2, ph = 124;
+    o += `<g${hit('sm:' + smId)}>` + text(sx, sy - 10, narrow ? `SM ${smId} (simplified)` : `SM ${smId} · simplified, not a floorplan`, 't-hdr c-hw hit') + '</g>';
+    o += rect(sx, sy, sw, 2 * ph + 30, 'box-hw');
+    const warpsAt = ['B0 · warp 0', 'B0 · warp 1', `B${other} · warp 0`, `B${other} · warp 1`];
+    const px = p => sx + 10 + (p % 2) * (pw + 10), py = p => sy + 10 + Math.floor(p / 2) * (ph + 10);
+    for (let p = 0; p < 4; p++) {
+      const x = px(p), y = py(p);
+      o += rect(x, y, pw, ph, 'box-hw') + text(x + 8, y + 17, `partition ${p}`, 't-sub');
+      o += `<g${hit('ctrl')}>` + rect(x + 6, y + 24, pw - 12, 26, 'box-sched hit') + text(x + 14, y + 41.5, 'warp scheduler', 't-in hit') + '</g>';
+      o += text(x + 8, y + 66, 'ready warps:', 't-sub');
+      o += `<g${hit(p < 2 ? 'warp' : 'block:' + other)}>` + rect(x + 6, y + 72, pw - 12, 22, 'chip hit') + text(x + 14, y + 87.5, warpsAt[p], 't-in hit') + '</g>';
+      o += `<g${hit('sp')}>`;
+      for (let i = 0; i < 8; i++) o += rect(x + 8 + i * 12, y + 104, 9, 9, 'unit hit');
+      o += '</g>';
+      o += text(x + 8 + 8 * 12 + 6, y + 113, 'compute', 't-sub');
+    }
+    {
+      const end = tx0 + 32 * tickW - 2.5, chipY = p => py(p) + 83;
+      let r0, r1;
+      if (!narrow) {
+        const rowGap = sy + 10 + ph + 5, colGap = sx + 10 + pw + 5;
+        r0 = [[end, rowsY[0] + 8], [412, rowsY[0] + 8], [412, chipY(0)], [px(0) + 5, chipY(0)]];
+        r1 = [[end, rowsY[1] + 8], [420, rowsY[1] + 8], [420, rowGap], [colGap, rowGap], [colGap, chipY(1)], [px(1) + 5, chipY(1)]];
+      } else {
+        const colGap = sx + 10 + pw + 5;
+        r0 = [[end, rowsY[0] + 8], [347, rowsY[0] + 8], [347, sy + 5], [colGap, sy + 5], [colGap, chipY(0)], [px(0) + pw - 5, chipY(0)]];
+        r1 = [[end, rowsY[1] + 8], [355, rowsY[1] + 8], [355, chipY(1)], [px(1) + pw - 5, chipY(1)]];
+      }
+      [r0, r1].forEach(pts => { o += arrowPts(pts, 'a-sched', 'hd-sched'); });
+      if (!narrow) o += text(0, by + 152, 'dashed magenta: warp assigned to a partition', 't-sub c-sched');
+    }
+    let ny = sy + 2 * ph + 56;
+    const notes = narrow
+      ? [['Lanes are logical, not dedicated cores.', 't-in'], ['H100: 4 partitions × 32 SPs (PMPP p.76)', 't-sub']]
+      : [['Lanes are logical positions. Compute units are not owned by a warp; the scheduler issues', 't-in'], ['different warps over time. PMPP: an H100 SM has 4 processing blocks × 32 streaming processors.', 't-in']];
+    notes.forEach(([t, c]) => { o += text(0, ny, t, c); ny += 18; });
+    o += stamp(0, ny, 'SIMPLIFIED DRAWING');
+    return { o, W, H: ny + 26 };
+  }
+
+  // ------------------------------------------------------------------ render
+  function renderDiagram() {
+    const narrow = layoutName === 'narrow';
+    REL = mapStep() ? related() : null;
+    let o, W, H;
+    if (step === 3) ({ o, W, H } = drawSim(narrow));
+    else if (step === 4) ({ o, W, H } = drawBarrier(narrow));
+    else if (step === 6) ({ o, W, H } = drawDsmem(narrow));
+    else if (step === 7) ({ o, W, H } = drawWarps(narrow));
+    else { const L = mapGeom(narrow); o = drawMaps(L); W = L.W; H = L.H; }
+    svg.setAttribute('viewBox', `0 0 ${W} ${R1(H)}`);
+    svg.classList.toggle('narrow', narrow);
+    svg.innerHTML = DEFS + o;
+    animateNext = false;
+    document.getElementById('diagram-label').textContent = describe();
+    document.getElementById('status').innerHTML = step === 4 ? barrierStatus() : '';
+    document.getElementById('figcap').textContent = {
+      1: 'Placement of blocks onto SMs is an illustrative run-time snapshot, not something your code or blockIdx decides. The GPU is fictional; real GPUs have many more SMs.',
+      2: 'Resident ≠ "all threads executing the same instruction right now". Blocks sharing an SM are not synchronized with each other.',
+      3: 'Two blocks per SM is an assumption for this demo. Real limits come from registers, shared memory and thread counts (PMPP §4.6–4.7).' + (cluster ? ' Cluster mode does not apply here: this demo schedules independent blocks.' : ''),
+      4: 'Four of Block A’s threads and two of Block B’s are drawn; a real block has blockDim threads. Times are invented.',
+      5: cluster ? 'Guaranteed: a cluster’s blocks are co-scheduled inside one GPC. Which SMs, and how many blocks per SM, is illustrative.' : 'Cluster mode is off: the launch has no clusters. Turn it on to see clusters.',
+      6: 'Segments are drawn next to the block that owns them. Sizes are not to scale.',
+      7: 'Simplified drawing of one SM; not a literal floorplan. Warp size 32 applies to the NVIDIA GPUs discussed in PMPP and the CUDA guide.'
+    }[step];
+  }
+
+  function describe() {
+    const st = STEPS[step - 1];
+    let t = `Step ${step}: ${st.title}. `;
+    if (step === 3) {
+      const s = SIM[sub];
+      t += `Waiting: ${list(s.wait) || 'none'}. SM 0 holds ${list(simOn(0)) || 'nothing'}. SM 1 holds ${list(simOn(1)) || 'nothing'}. Completed: ${list(s.done) || 'none'}.`;
+    } else if (step === 4 || step === 6) {
+      t += st.subs[sub];
+    } else if (step === 7) {
+      t += `A 64-thread block split into warp 0 (threads 0 to 31) and warp 1 (32 to 63), assigned to warp schedulers in a simplified SM ${warpSM()} with four partitions; B${warpOther()}'s warps wait in the other two.`;
+    } else {
+      t += 'Work map: a grid of 6 blocks B0 to B5. Hardware map: a GPU chip with GPC 0 (SM 0, SM 1) and GPC 1 (SM 2, SM 3), L2, memory controllers and off-chip global memory. Snapshot placement: ';
+      t += [0, 1, 2, 3].map(k => `SM ${k} holds ${blocksOn(k).map(b => 'B' + b).join(' and ') || 'nothing'}`).join('; ') + '.';
+      if (cluster) t += ' Clusters: C0 = B0 and B3, C1 = B1 and B4, C2 = B2 and B5.';
+    }
+    return t;
+  }
+
+  // ---- overview (both hierarchies, compact)
+  const OV = [
+    { kind: 'work', label: 'Work', sep: '›', items: [['launch', 'launch'], ['grid', 'grid'], ['cluster', 'cluster (opt.)'], ['block', 'block'], ['warp', 'warp'], ['thread', 'thread']] },
+    { kind: 'hw', label: 'Hardware', sep: '›', items: [['gpu', 'GPU'], ['gpc', 'GPC'], ['sm', 'SM'], ['ctrl', 'warp schedulers'], ['sp', 'compute units'], ['mc', 'memory controllers']] },
+    { kind: 'other', label: 'Storage · ops', sep: '·', items: [['regs', 'registers'], ['smem', 'L1/shared'], ['dsmem', 'DSMEM'], ['l2', 'L2'], ['gmem', 'global memory'], ['runtime', 'CUDA runtime'], ['sched', 'block scheduling'], ['sync', '__syncthreads()'], ['csync', 'cluster.sync()']] }
+  ];
+  const ovEl = document.getElementById('overview');
+  ovEl.innerHTML = OV.map(r => `<div class="ov-row" data-kind="${r.kind}"><span class="kind"><i aria-hidden="true"></i>${r.label}</span>${r.items.map(([id, l], i) => `${i ? `<span class="sep" aria-hidden="true">${r.sep}</span>` : ''}<button type="button" class="crumb" data-base="${id}" aria-pressed="false">${esc(l)}</button>`).join('')}</div>`).join('');
+  function renderOverview() {
+    const base = sel ? sel.split(':')[0] : null;
+    const focus = STEPS[step - 1].focus;
+    ovEl.querySelectorAll('.crumb').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.base === base));
+      b.dataset.focus = String(focus.includes(b.dataset.base));
+    });
+  }
+  // A type-level click picks the instance that makes sense in the current view
+  function crumbTarget(base) {
+    const b = lastBlock;
+    if (step === 4) return { block: 'block:A', thread: 'thread:A', sm: 'sm:x' }[base] || base;
+    if (step === 3) {
+      if (base === 'block') return 'block:' + b;
+      if (base === 'thread') return 'thread:' + b;
+      if (base === 'sm') { const s = simState(b); return 'sm:' + (s.st === 'resident' ? s.k : 0); }
+    }
+    if (step === 6) { const bb = DS_BLOCKS.includes(b) ? b : 0; if (base === 'block') return 'block:' + bb; if (base === 'sm') return 'sm:' + smOf(bb); if (base === 'thread') return 'thread:' + bb; }
+    if (step === 7) { if (base === 'block' || base === 'thread') return base + ':0'; if (base === 'sm') return 'sm:' + warpSM(); }
+    const map = { block: 'block:' + b, thread: 'thread:' + b, sm: 'sm:' + smOf(b), gpc: 'gpc:' + SM_GPC[smOf(b)], cluster: 'cluster:' + clusterOf(b) };
+    return map[base] || base;
+  }
+  ovEl.addEventListener('click', e => { const b = e.target.closest('.crumb'); if (b) select(crumbTarget(b.dataset.base)); });
+
+  // ---- picker: only instances that exist in the current view
+  const pickerEl = document.getElementById('picker');
+  function renderPicker() {
+    const grp = (label, ids) => `<div class="grp"><span>${label}</span>${ids.map(([id, l]) => `<button type="button" data-id="${id}" aria-pressed="${sel === id}">${l}</button>`).join('')}</div>`;
+    let h = '';
+    if (mapStep()) {
+      h += grp('Blocks', [...Array(NB).keys()].map(n => ['block:' + n, 'B' + n]));
+      h += grp('SMs', [0, 1, 2, 3].map(k => ['sm:' + k, 'SM ' + k]));
+      h += grp('GPCs', [0, 1].map(g => ['gpc:' + g, 'GPC ' + g]));
+      if (cluster) h += grp('Clusters', [0, 1, 2].map(c => ['cluster:' + c, 'C' + c]));
+    } else if (step === 3) {
+      h += grp('Blocks', [...Array(NB).keys()].map(n => ['block:' + n, 'B' + n]));
+      h += grp('SMs', [0, 1].map(k => ['sm:' + k, 'SM ' + k]));
+    } else if (step === 4) {
+      h += grp('Blocks', [['block:A', 'Block A'], ['block:B', 'Block B']]);
+    } else if (step === 6 && cluster) {
+      h += grp('Blocks', DS_BLOCKS.map(n => ['block:' + n, 'B' + n]));
+      h += grp('SMs', [0, 1].map(k => ['sm:' + k, 'SM ' + k]));
+      h += grp('Clusters', [0, 2].map(c => ['cluster:' + c, 'C' + c]));
+    } else if (step === 7) {
+      h += grp('Blocks', [0, warpOther()].map(n => ['block:' + n, 'B' + n]));
+      h += grp('Parts', [['warp', 'warp'], ['ctrl', 'scheduler'], ['sp', 'compute']]);
+    }
+    pickerEl.innerHTML = h;
+    pickerEl.hidden = !h;
+  }
+  pickerEl.addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) select(b.dataset.id); });
+
+  // ---- card: generic facts plus one "this view" row computed from the active drawing
+  function renderCard() {
+    const el = document.getElementById('card'), note = document.getElementById('selnote');
+    const ent = sel ? entity(sel) : null;
+    if (!ent) { note.hidden = true; el.innerHTML = `<div class="card"><h3>Nothing selected</h3><dl><dt>Try</dt><dd>A block, an SM, the magenta scheduling box, or an item in the overview.</dd></dl></div>`; return; }
+    let rows = ent.rows.filter(r => r[0] !== 'view');
+    const v = (ent.rows.find(r => r[0] === 'view') || [])[1] || viewOf(sel);
+    const dl = (v ? `<dt class="view-dt">In this view</dt><dd class="view">${v}</dd>` : '') + rows.map(r => `<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('');
+    el.innerHTML = `<div class="card" data-kind="${ent.kind}"><span class="kindtag">${KIND[ent.kind]}</span><h3>${esc(ent.name)}</h3><dl>${dl}</dl></div>`;
+    note.hidden = false;
+    note.innerHTML = `Selected: <b>${esc(ent.name)}</b>${v ? ` · ${v}` : ''} <a href="#inspect-h">Full card ↓</a>`;
+  }
+
+  // ---- lead + sub-states + full explanation (only the active step is in the DOM)
+  const subChips = document.getElementById('sub-chips');
+  function renderNarration() {
+    const st = STEPS[step - 1];
+    document.getElementById('lead-h').innerHTML = `<span class="n">Step ${step} of 7</span>${esc(st.title)}`;
+    document.getElementById('lead-p').innerHTML = st.lead;
+    const sn = document.getElementById('subnav');
+    sn.hidden = !st.subs;
+    if (st.subs) {
+      subChips.innerHTML = st.subs.map((_, j) => `<button type="button" data-sub="${j}" aria-label="State ${String.fromCharCode(97 + j)}"${j === sub ? ' aria-current="step"' : ''}>${String.fromCharCode(97 + j)}</button>`).join('');
+      document.getElementById('sub-now').textContent = `${String.fromCharCode(97 + sub)} · ${st.subs[sub]}`;
+    }
+    document.getElementById('more-s').textContent = `Full explanation · step ${step}${st.code ? ' · with code' : ''}`;
+    document.getElementById('more-body').innerHTML = (st.code ? `<pre>${esc(st.code)}</pre>` : '') + st.body +
+      (st.subs ? `<ol class="subs">${st.subs.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : '') + `<p class="chk">${esc(st.chk)}</p>`;
+    const subTxt = st.subs ? ` · state ${String.fromCharCode(97 + sub)} of ${st.subs.length}` : '';
+    document.getElementById('pos').textContent = `Step ${step} of 7${subTxt}`;
+    document.getElementById('tl-now').innerHTML = `<b>Step ${step} of 7 ·</b> ${esc(st.title)}${subTxt}`;
+    document.getElementById('announce').textContent = `Step ${step} of 7: ${st.title}.${st.subs ? ' ' + st.subs[sub] : ''}`;
+    document.getElementById('back').disabled = step === 1 && sub === 0;
+    document.getElementById('next').disabled = step === 7;
+  }
+  subChips.addEventListener('click', e => { const b = e.target.closest('button[data-sub]'); if (b) go(step, Number(b.dataset.sub)); });
+
+  // ---- legend: only what the current view uses; the full key is one click away
+  const SWD = {
+    contain: ['Box inside a box = <b>part of</b>', () => rect(1, 1, 28, 16, 'box-hw') + rect(7, 5, 16, 9, 'box-hw'), 30, 18],
+    sched: ['Dashed magenta arrow = <b>assigned to</b> (block → SM, warp → scheduler)', () => `<path d="M2,7 L28,7" class="a-sched"/>` + head([34, 7], [2, 7], 'hd-sched'), 36, 14],
+    chip: ['Dashed chip = block (or warp) <b>resident</b> there now', () => rect(1, 2, 20, 12, 'chip'), 22, 16],
+    zoom: ['"Inside SM" panel = one SM <b>opened up</b>; all SMs have these parts', () => rect(1, 1, 20, 14, 'box-hw') + rect(5, 9, 12, 4, 'box-mem'), 22, 16],
+    done: ['Grey chip = block <b>completed</b>', () => rect(1, 2, 20, 12, 'chip-done'), 22, 16],
+    free: ['Dotted room = <b>free</b> space (assumed limit)', () => rect(1, 2, 20, 12, 'slot'), 22, 16],
+    run: ['Blue line = thread <b>running</b>', () => line(2, 7, 30, 7, 'run'), 32, 14],
+    wait: ['Hatched orange = <b>waiting</b> at a barrier', () => `<rect x="1" y="1" width="22" height="12" fill="url(#hatch-lg)" style="stroke: var(--sync)"/>`, 24, 14],
+    release: ['Orange vertical line = barrier <b>released</b>', () => line(8, 0, 8, 16, 'rel'), 16, 16],
+    scopebar: ['Orange bar at left = one barrier’s <b>scope</b>', () => rect(6, 0, 5, 16, 'box-sync'), 16, 16],
+    clu: ['Dashed blue outline = <b>thread-block cluster</b>', () => rect(1, 1, 26, 14, 'clu'), 28, 16],
+    data: ['Solid ochre arrow = <b>data access</b>', () => `<path d="M2,7 L28,7" class="a-data"/>` + head([34, 7], [2, 7], 'hd-data'), 36, 14],
+    no: ['Dotted line with ✕ = <b>no access</b>', () => `<path d="M2,7 L34,7" class="a-no"/>` + xmark(18, 7, 4), 36, 14],
+    lane: ['Small blue ticks = <b>lanes</b> of a warp (logical)', () => rect(1, 2, 6, 12, 'lane') + rect(9, 2, 6, 12, 'lane') + rect(17, 2, 6, 12, 'lane'), 24, 16]
+  };
+  const HATCH_LG = `<defs><pattern id="hatch-lg" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" style="stroke: var(--sync); stroke-width: 1.2"/></pattern></defs>`;
+  const legendItem = k => { const [t, f, w, h] = SWD[k]; return `<li><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${k === 'wait' ? HATCH_LG : ''}${f()}</svg><span>${t}</span></li>`; };
+  document.getElementById('legend-all').innerHTML = Object.keys(SWD).map(legendItem).join('').replace(/hatch-lg/g, 'hatch-lg2');
+  function renderLegend() { document.getElementById('legend').innerHTML = STEPS[step - 1].legend.map(legendItem).join(''); }
+
+  // ---- timeline
+  const stepsEl = document.getElementById('steps');
+  stepsEl.innerHTML = STEPS.map((st, i) =>
+    `<li data-step="${i + 1}"><button type="button" data-step="${i + 1}" aria-label="Step ${i + 1}: ${st.short}"><span class="num">0${i + 1}</span><span class="lbl">${st.short}</span></button><span class="bar" aria-hidden="true"></span></li>`).join('');
+  const ICONS = {
+    play: '<svg viewBox="0 0 14 14"><path d="M3 1.5 L12 7 L3 12.5 Z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 14 14"><rect x="2.5" y="1.5" width="3" height="11" fill="currentColor"/><rect x="8.5" y="1.5" width="3" height="11" fill="currentColor"/></svg>',
+    replay: '<svg viewBox="0 0 14 14"><path d="M11.6 7.6 A4.7 4.7 0 1 1 10.2 3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7.6 1 L11.4 3.4 L8.4 6.2 Z" fill="currentColor"/></svg>'
+  };
+  const atEnd = () => step === 7 && sub === NSUB[6] - 1;
+  function renderTimeline() {
+    stepsEl.querySelectorAll('li').forEach(li => {
+      const n = Number(li.dataset.step);
+      li.dataset.state = n < step ? 'done' : n === step ? 'current' : 'todo';
+      const btn = li.querySelector('button');
+      if (n === step) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+      li.querySelector('.bar').style.animation = '';
+    });
+    const mode = playing ? 'pause' : atEnd() ? 'replay' : 'play';
+    const play = document.getElementById('play');
+    play.dataset.mode = mode;
+    document.getElementById('play-icon').innerHTML = ICONS[mode];
+    document.getElementById('play-t').textContent = mode === 'pause' ? 'Pause' : mode === 'replay' ? 'Replay' : 'Play';
+    play.setAttribute('aria-label', mode === 'pause' ? 'Pause walkthrough' : mode === 'replay' ? 'Replay walkthrough from step 1' : 'Play walkthrough');
+  }
+
+  // ---- cluster switch
+  const clusterBtn = document.getElementById('cluster');
+  function renderCluster() {
+    clusterBtn.setAttribute('aria-checked', String(cluster));
+    document.getElementById('cluster-state').textContent = cluster ? 'on · cc 9.0+ only' : 'off · cc 9.0+ only';
+  }
+  function validSel() {
+    // drop selections that point at things the current view no longer has
+    if (!sel) return;
+    if (!cluster && sel.startsWith('cluster:')) sel = null;
+    else if (step === 6 && cluster && /^block:\d$/.test(sel) && !DS_BLOCKS.includes(Number(sel.split(':')[1]))) sel = 'block:0';
+  }
+  clusterBtn.addEventListener('click', () => {
+    stop();
+    cluster = !cluster;
+    validSel();
+    animateNext = true;
+    renderAll();
+    document.getElementById('announce').textContent = `Cluster mode ${cluster ? 'on' : 'off'}.` + (mapStep() ? ' Block placement snapshot changed.' : step === 3 || step === 4 ? ' This view does not use clusters.' : '');
+  });
+
+  // ---- selection
+  function select(id) {
+    stop();
+    sel = (sel === id) ? null : id;
+    const m = /^(?:block|thread):(\d)$/.exec(sel || '');
+    if (m) lastBlock = Number(m[1]);
+    animateNext = true;
+    renderDiagram(); renderOverview(); renderPicker(); renderCard();
+  }
+  svg.addEventListener('click', e => { const g = e.target.closest('[data-sel]'); if (g) select(g.getAttribute('data-sel')); });
+
+  function renderAll() { renderTimeline(); renderNarration(); renderCluster(); renderOverview(); renderPicker(); renderLegend(); renderDiagram(); renderCard(); }
+
+  // ---- navigation over every (step, sub) state
+  function go(s, b, opts = {}) {
+    s = Math.max(1, Math.min(7, s));
+    b = Math.max(0, Math.min(NSUB[s - 1] - 1, b));
+    if (!opts.auto) stop();
+    const newStep = s !== step;
+    step = s; sub = b;
+    let why = '';
+    if (newStep) {
+      sel = STEPS[s - 1].def;
+      if (sel && /^block:\d$/.test(sel)) lastBlock = Number(sel.split(':')[1]);
+      if (STEPS[s - 1].forceCluster && !cluster) { cluster = true; why = 'Cluster mode turned on for this step; switch it off to compare. '; }
+    }
+    validSel();
+    animateNext = true;
+    renderAll();
+    if (why) document.getElementById('announce').textContent = why + document.getElementById('announce').textContent;
+    if (playing) schedule();
+  }
+  const next = o => (sub < NSUB[step - 1] - 1) ? go(step, sub + 1, o) : go(step + 1, 0, o);
+  const back = () => (sub > 0) ? go(step, sub - 1) : go(step - 1, NSUB[step - 2] ? NSUB[step - 2] - 1 : 0);
+  function reset() { stop(); cluster = false; sel = null; lastBlock = 4; step = 1; sub = 0; renderAll(); document.getElementById('announce').textContent = 'Reset to step 1. Cluster mode off.'; }
+
+  // ---- autoplay (optional): each state stays up long enough to read its short text
+  function dwell() {
+    const st = STEPS[step - 1];
+    const words = (st.subs ? st.subs[sub] : st.lead.replace(/<[^>]+>/g, ' ')).split(/\s+/).length;
+    return Math.min(30000, 4500 + words * 230);
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (!playing) return;
+    if (atEnd()) { stop(); return; }
+    const ms = dwell();
+    const bar = stepsEl.querySelector(`li[data-step="${step}"] .bar`);
+    if (bar && !reduceMotion) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = `grow ${ms}ms linear forwards`; }
+    timer = setTimeout(() => next({ auto: true }), ms);
+  }
+  function stop() { if (!playing) return; playing = false; clearTimeout(timer); renderTimeline(); }
+
+  stepsEl.addEventListener('click', e => { const b = e.target.closest('button[data-step]'); if (b) go(Number(b.dataset.step), 0); });
+  document.getElementById('next').addEventListener('click', () => next());
+  document.getElementById('back').addEventListener('click', back);
+  document.getElementById('reset').addEventListener('click', reset);
+  document.getElementById('play').addEventListener('click', () => {
+    if (playing) { stop(); return; }
+    playing = true;
+    if (atEnd()) go(1, 0, { auto: true }); else { renderTimeline(); schedule(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === 'ArrowRight') { next(); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { back(); e.preventDefault(); }
+    else if (playing) stop();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+
+  // ---- theme toggle: follows the system until the reader picks one
+  const root = document.documentElement, themeBtn = document.getElementById('theme');
+  const sysDark = () => !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : sysDark();
+  function renderTheme() {
+    const d = isDark();
+    themeBtn.setAttribute('aria-pressed', String(d));
+    themeBtn.setAttribute('aria-label', d ? 'Terminal (dark) theme on. Switch to light theme' : 'Light theme on. Switch to terminal (dark) theme');
+    document.getElementById('theme-t').textContent = d ? 'Terminal theme' : 'Light theme';
+  }
+  try { const t = localStorage.getItem('cuda-map-theme'); if (t === 'dark' || t === 'light') root.dataset.theme = t; } catch (e) { /* storage unavailable */ }
+  themeBtn.addEventListener('click', () => {
+    root.dataset.theme = isDark() ? 'light' : 'dark';
+    try { localStorage.setItem('cuda-map-theme', root.dataset.theme); } catch (e) { /* storage unavailable */ }
+    renderTheme();
+  });
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderTheme);
+  renderTheme();
+
+  // ---- matmul thread grid: 2×2 blocks of 3×3 over a 5×4 output
+  (function () {
+    const g = document.getElementById('tgrid');
+    let h = '<div class="h"></div>';
+    for (let c = 0; c < 6; c++) h += `<div class="h">c${c}</div>`;
+    for (let r = 0; r < 6; r++) {
+      h += `<div class="h">r${r}</div>`;
+      for (let c = 0; c < 6; c++) {
+        const ok = r < 5 && c < 4;
+        const cls = ['c', ok ? 'in' : 'out', c % 3 === 0 ? 'bx' : '', r % 3 === 0 ? 'by' : ''].join(' ');
+        const lab = (r % 3 === 0 && c % 3 === 0) ? `(${c / 3},${r / 3})` : (ok ? '' : '·');
+        h += `<div class="${cls}" title="row_index ${r}, col_index ${c}: ${ok ? 'writes out' : 'excluded'}">${lab}</div>`;
+      }
+    }
+    g.innerHTML = h;
+  })();
+
+  // ---- glossary
+  const GLOSS = [
+    ['Kernel', 'A function marked __global__ that runs on the GPU, once per launched thread.'],
+    ['Thread', 'One running instance of the kernel, with its own indices and registers.'],
+    ['Block (thread block)', 'A group of threads placed together on one SM. They can share shared memory and use __syncthreads().'],
+    ['Grid', 'All the blocks of one launch.'],
+    ['Thread-block cluster', 'Optional (compute capability 9.0+): a group of blocks co-scheduled inside one GPC, with cluster.sync() and DSMEM.'],
+    ['Warp', '32 consecutive threads of a block, the unit an SM\'s warp schedulers issue. Lanes are its 32 positions.'],
+    ['SM', 'Streaming Multiprocessor: the hardware unit that blocks are assigned to.'],
+    ['GPC', 'GPU Processing Cluster (PMPP) or Graphics Processing Cluster (NVIDIA): a hardware group of SMs.'],
+    ['Streaming processor / CUDA core', 'A compute unit inside an SM. Not a thread, and not owned by one.'],
+    ['Resident', 'Assigned to an SM with resources reserved, so its threads can be scheduled there. Not the same as "executing right now".'],
+    ['Block scheduling', 'The GPU assigning whole blocks to SMs as room becomes available.'],
+    ['Barrier', 'A program point where the threads in a barrier\'s scope wait until all of them arrive. The scope depends on the barrier.'],
+    ['__syncthreads()', 'The block-wide barrier. Its scope is one block.'],
+    ['cluster.sync()', 'The cluster-wide barrier from Cooperative Groups (a CUDA C++ library of thread-group objects). Its scope is every block in one cluster.'],
+    ['Registers', 'Fastest per-thread storage, from the SM\'s register file.'],
+    ['Shared memory', 'Fast on-chip storage allocated per block. Only that block can use it (except DSMEM).'],
+    ['DSMEM', 'Distributed shared memory: access to other blocks\' shared memory inside the same cluster.'],
+    ['L1 / L2', 'Caches. L1 is per SM and shares storage with shared memory. L2 is shared by all SMs.'],
+    ['Global memory', 'The GPU\'s off-chip DRAM, reachable by every thread, through memory controllers.'],
+    ['Compute capability', 'NVIDIA\'s version number for GPU features. Clusters need 9.0 or higher.'],
+    ['SIMT', 'Single instruction, multiple threads: a warp\'s active threads run the same instruction.'],
+    ['Transparent scalability', 'The same kernel runs unchanged on GPUs with more or fewer SMs, because blocks are independent.']
+  ];
+  document.getElementById('gloss').innerHTML = GLOSS.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d)}</dd></div>`).join('');
+
+  // ---- layout: the wide drawing is used only when one SVG unit renders at ≥ 1 CSS pixel
+  const fig = svg.parentElement;
+  const pick = () => (fig.clientWidth - parseFloat(getComputedStyle(fig).paddingLeft) - parseFloat(getComputedStyle(fig).paddingRight)) < 860 ? 'narrow' : 'wide';
+  function pickLayout() { const n = pick(); if (n !== layoutName) { layoutName = n; renderDiagram(); } }
+  const tl = document.getElementById('timeline');
+  const setTl = () => root.style.setProperty('--tl-h', tl.offsetHeight + 'px');
+  if ('ResizeObserver' in window) { new ResizeObserver(pickLayout).observe(fig); new ResizeObserver(setTl).observe(tl); }
+  else window.addEventListener('resize', () => { pickLayout(); setTl(); });
+  setTl();
+  layoutName = pick();
+  renderAll();
+})();
+</script>
+</body>
+</html>

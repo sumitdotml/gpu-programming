@@ -116,13 +116,22 @@ Use this exact shape for new entries.
 - prevention_rule: before reporting an interactive HTML artifact as done, render every step in a real browser at desktop and phone widths, in light and dark, and drive the controls with real input events
 - validation_check: a scripted headless-browser run clicks each control, reports no console errors, no horizontal overflow at 390px, and screenshots of each state show no overlapping text
 - first_seen: 2026-09-26
-- last_seen: 2026-09-27
-- occurrence_count: 3
+- last_seen: 2026-10-10
+- occurrence_count: 6
 - evidence:
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:361
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:414
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:475
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:561
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:892 (null === null drew an unselectable scope row as selected)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:982 (waiting column re-packed, so scheduling arrows appeared to start at the wrong block)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:996 (scheduling arrows ran through occupied slot chips)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:277 (sticky controls covered about 20% of a 390px screen)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:113 (hidden narration steps reserve the tallest step's height, placing the inspector about 1950 CSS pixels below the viewport top after scrolling to controls)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:148 (sticky flex figure compresses the SVG vertically; measured 10.5-unit labels render at about 8.1 CSS pixels at 1512x850)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:921 (revision draft: SM drill-down tag overlapped a resident chip and the DRAM label overflowed its viewBox; fixed before delivery)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:1095 (revision draft: barrier "A released" label collided with the Block B header; fixed before delivery)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:350 (revision draft: sub-state caption in the side column pushed the inspector to 525-632px of a 720px viewport; moved above the drawing)
 
 ### MISTAKE-20260926-002
 - id: MISTAKE-20260926-002
@@ -133,12 +142,13 @@ Use this exact shape for new entries.
 - prevention_rule: compare each teaching claim with the specific host function, kernel indexing, and CUDA API behavior before publishing; avoid universal claims and wording that implies elementwise matmul or movement instead of copying
 - validation_check: artifact descriptions identify &M_d as host-side only in matmul(), say cudaMemcpy copies values, and describe M and N accesses without implying matching indices
 - first_seen: 2026-09-26
-- last_seen: 2026-09-26
-- occurrence_count: 1
+- last_seen: 2026-10-10
+- occurrence_count: 2
 - evidence:
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:221
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:253
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:259
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:394 (draft legend note said "no arrow means contains and no box means runs on", which was meaningless; removed before delivery)
 
 ### MISTAKE-20260927-001
 - id: MISTAKE-20260927-001
@@ -153,3 +163,32 @@ Use this exact shape for new entries.
 - occurrence_count: 1
 - evidence:
   - file:artifacts/pmpp/ch03/matmul-host-device-flow.html:231
+
+### MISTAKE-20261010-001
+- id: MISTAKE-20261010-001
+- status: active
+- severity: medium
+- scope_tags: [docs, learning]
+- pattern: teaching artifact attributed a claim to a specific source section whose text, as read in the session, did not contain that claim (local memory "sits in device memory (PMPP §5.2)")
+- prevention_rule: every parenthetical source citation in a teaching artifact must point to text actually read in the session that states the claim; otherwise drop the citation or mark the claim as unverified training knowledge
+- validation_check: for each "(PMPP ...)" or "NVIDIA §..." citation in the artifact, a quoted or extracted passage from this session supports it
+- first_seen: 2026-10-10
+- last_seen: 2026-10-10
+- occurrence_count: 1
+- evidence:
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:397
+
+### MISTAKE-20261010-002
+- id: MISTAKE-20261010-002
+- status: active
+- severity: medium
+- scope_tags: [docs, learning, interactive-state]
+- pattern: interactive teaching inspector and summary prose disagree with the selected demonstration or synchronization scope
+- prevention_rule: derive inspector data from the active demonstration state and explicitly qualify each barrier claim by its scope instead of reusing block-only claims for cluster barriers
+- validation_check: initial scheduling state reports blocks as waiting with no assigned SM; resident and completed states match the diagram; comparison prose distinguishes block barriers from cross-block cluster barriers
+- first_seen: 2026-10-10
+- last_seen: 2026-10-10
+- occurrence_count: 1
+- evidence:
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:557 (block inspector uses static smOf snapshot in the dynamic scheduling demo; B4 is reported on SM 2 while all blocks wait and the small GPU only has SM 0 and SM 1)
+  - file:artifacts/pmpp/ch04/cuda-work-hardware-map.html:363 (comparison includes cluster.sync but says barriers have no effect on other blocks without limiting that claim to __syncthreads)
